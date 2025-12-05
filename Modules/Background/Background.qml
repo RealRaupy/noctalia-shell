@@ -900,6 +900,7 @@ Variants {
 
           Qt.callLater(() => {
                          currentWallpaper.source = source;
+                         currentWallpaper.opacity = 1;
                        });
         }
         updateWallpaperSuspension();
@@ -944,7 +945,7 @@ Variants {
       transitionAnimation.start();
     }
 
-    function startFallbackTransition(source) {
+      function startFallbackTransition(source) {
         transitionAnimation.stop();
         fallbackTransitionAnimation.stop();
         fallbackTransitionProgress = 0.0;
@@ -966,38 +967,77 @@ Variants {
 
         Qt.callLater(() => {
                        if (fallbackOverlayLoader.item && fallbackOverlayLoader.item.setSource) {
+                         const startAnim = function () {
+                           applySuspensionState();
+                           fallbackTransitionAnimation.start();
+                         };
+
                          fallbackOverlayLoader.item.setSource(source);
-                         applySuspensionState();
-                         fallbackTransitionAnimation.start();
+
+                         if (fallbackOverlayLoader.item.hasOwnProperty("status")) {
+                           if (fallbackOverlayLoader.item.status === Image.Ready) {
+                             startAnim();
+                           } else {
+                             // Wait for the image to become ready to avoid blank frames
+                             const handler = function () {
+                               fallbackOverlayLoader.item.statusChanged.disconnect(handler);
+                               startAnim();
+                             };
+                             fallbackOverlayLoader.item.statusChanged.connect(handler);
+                             return;
+                           }
+                         } else {
+                           startAnim();
+                         }
                        }
                      });
       }
 
       function finalizeFallbackTransition() {
         fallbackTransitionProgress = 0.0;
-        fallbackTransitionActive = false;
         currentWallpaperPath = futureWallpaper;
         currentWallpaperType = nextWallpaperType;
         nextWallpaperType = currentWallpaperType;
         useFallbackTransition = (currentWallpaperType === "video");
 
-        // Swap base/overlay to reuse video players without recreating
-        var temp = fallbackBaseLoader;
-        fallbackBaseLoader = fallbackOverlayLoader;
-        fallbackOverlayLoader = temp;
-        fallbackOverlayLoader.opacity = 0.0;
-        stopLoaderPlayback(fallbackOverlayLoader);
-        if (fallbackBaseLoader.item && fallbackBaseLoader.item.opacity !== undefined) {
-          fallbackBaseLoader.item.opacity = 1;
-          if (fallbackBaseLoader.item.visualOpacity !== undefined) {
-            fallbackBaseLoader.item.visualOpacity = 1;
+        var finalize = function () {
+          var temp = fallbackBaseLoader;
+          fallbackBaseLoader = fallbackOverlayLoader;
+          fallbackOverlayLoader = temp;
+          fallbackOverlayLoader.opacity = 0.0;
+          if (fallbackBaseLoader.item && fallbackBaseLoader.item.opacity !== undefined) {
+            fallbackBaseLoader.item.opacity = 1;
+            if (fallbackBaseLoader.item.visualOpacity !== undefined) {
+              fallbackBaseLoader.item.visualOpacity = 1;
+            }
           }
+
+          recalculateImageSizes();
+          applySuspensionState();
+
+          Qt.callLater(() => {
+            fallbackTransitionActive = false;
+            stopLoaderPlayback(fallbackOverlayLoader);
+          });
+        };
+
+        var newSourcePath = getDisplaySource(currentWallpaperPath);
+        currentWallpaper.source = newSourcePath;
+        currentWallpaper.sourceSize = undefined;
+        currentWallpaper.opacity = 1;
+
+        if (currentWallpaperType === "image" && currentWallpaper.status !== Image.Ready) {
+          const handler = function () {
+            if (currentWallpaper.status === Image.Ready) {
+              currentWallpaper.statusChanged.disconnect(handler);
+              finalize();
+            }
+          };
+          currentWallpaper.statusChanged.connect(handler);
+          return;
         }
 
-        currentWallpaper.source = getDisplaySource(currentWallpaperPath);
-        currentWallpaper.sourceSize = undefined;
-        recalculateImageSizes();
-        applySuspensionState();
+        finalize();
       }
 
       // ------------------------------------------------------
