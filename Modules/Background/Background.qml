@@ -664,7 +664,11 @@ Variants {
           var win = windows.get(w);
           var sameWorkspace = targetWorkspaceId !== -1 && win.workspaceId === targetWorkspaceId;
           var sameOutput = win.output && win.output === modelData.name;
-          if (!sameWorkspace && !sameOutput) {
+          if (targetWorkspaceId !== -1) {
+            if (!sameWorkspace) {
+              continue;
+            }
+          } else if (!sameOutput) {
             continue;
           }
 

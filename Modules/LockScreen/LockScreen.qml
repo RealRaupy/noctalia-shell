@@ -116,6 +116,10 @@ Loader {
           property string wallpaperDisplay: ""
 
           function updateWallpaperFromService() {
+            if (!WallpaperService || !WallpaperService.isInitialized) {
+              Qt.callLater(updateWallpaperFromService);
+              return;
+            }
             if (screen) {
               wallpaperPath = WallpaperService.getWallpaper(screen.name);
             }
