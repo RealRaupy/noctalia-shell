@@ -2145,7 +2145,66 @@
           "label": "选择器位置"
         }
       },
-      "title": "壁纸"
+      "title": "壁纸",
+      "video": {
+        "section": {
+          "label": "视频壁纸"
+        },
+        "playback-enabled": {
+          "label": "启用动态壁纸",
+          "description": "用视频/GIF代替静态预览作为壁纸。"
+        },
+        "lockscreen": {
+          "playback": {
+            "label": "锁屏上显示视频",
+            "description": "在锁屏上继续显示动态壁纸；关闭以在那里暂停。"
+          },
+          "mute": {
+            "label": "锁屏静音",
+            "description": "锁屏激活时静音壁纸音频。"
+          }
+        },
+        "pause-on-windows": {
+          "label": "有窗口时暂停",
+          "description": "当工作区有窗口时暂停动态壁纸。",
+          "info": "白名单：只静音。黑名单：不触发暂停。"
+        },
+        "mute-instead": {
+          "label": "静音而非暂停",
+          "description": "有窗口时静音，而不是暂停视频。"
+        },
+        "whitelist": {
+          "label": "静音例外",
+          "description": "以下窗口不静音（应用ID/类别/标题/名称）。",
+          "placeholder": "例如：kitty, firefox, discord",
+          "add": "添加到静音例外"
+        },
+        "blacklist": {
+          "label": "忽略暂停",
+          "description": "这些窗口不会触发暂停（应用ID/类别/标题/名称）。",
+          "placeholder": "例如：kitty, code",
+          "add": "添加到暂停例外"
+        },
+        "remove-entry": "删除条目",
+        "audio-muted": {
+          "label": "静音壁纸音频",
+          "description": "全局静音壁纸音频。"
+        },
+        "audio-volume": {
+          "label": "壁纸音量",
+          "description": "调整视频壁纸的音量。"
+        },
+        "steam-integration": {
+          "label": "Steam 集成",
+          "description": "使用 Steam 创意工坊的 Wallpaper Engine 内容。",
+          "error": "未找到 Steam 壁纸目录。"
+        },
+        "use-steam": {
+          "label": "使用 Steam 壁纸",
+          "description": "使用 Wallpaper Engine 文件作为壁纸来源。",
+          "disabled-by-wallhaven": "Wallhaven 已启用；要用 Steam 壁纸请先关闭。"
+        }
+      }
     }
   },
   "setup": {
@@ -2416,7 +2475,8 @@
       "source": {
         "label": "来源",
         "local": "本地",
-        "wallhaven": "Wallhaven"
+        "wallhaven": "Wallhaven",
+        "steam": "Steam"
       },
       "title": "壁纸选择器",
       "wallhaven-settings": {

@@ -2145,7 +2145,66 @@
           "label": "Положение"
         }
       },
-      "title": "Обои"
+      "title": "Обои",
+      "video": {
+        "section": {
+          "label": "Видео-обои"
+        },
+        "playback-enabled": {
+          "label": "Включить анимированные обои",
+          "description": "Проигрывать видео и GIF вместо статичных превью."
+        },
+        "lockscreen": {
+          "playback": {
+            "label": "Видео на экране блокировки",
+            "description": "Показывать анимированные обои на экране блокировки; отключите, чтобы приостанавливать их там."
+          },
+          "mute": {
+            "label": "Без звука на экране блокировки",
+            "description": "Приглушать звук обоев, пока открыт экран блокировки."
+          }
+        },
+        "pause-on-windows": {
+          "label": "Пауза при открытых окнах",
+          "description": "Приостанавливать анимированные обои, если на рабочем месте есть окна.",
+          "info": "Белый список: только без звука. Чёрный: не ставит на паузу."
+        },
+        "mute-instead": {
+          "label": "Снимать звук вместо паузы",
+          "description": "Отключать звук вместо паузы, если окна открыты."
+        },
+        "whitelist": {
+          "label": "Исключения для беззвучия",
+          "description": "Не глушить звук для этих окон (ID приложения, класс, заголовок или имя).",
+          "placeholder": "напр. kitty, firefox, discord",
+          "add": "Добавить в исключения для звука"
+        },
+        "blacklist": {
+          "label": "Игнорировать паузу",
+          "description": "Эти окна не вызывают паузу (ID, класс, заголовок или имя).",
+          "placeholder": "напр. kitty, code",
+          "add": "Добавить в исключения паузы"
+        },
+        "remove-entry": "Удалить запись",
+        "audio-muted": {
+          "label": "Отключить звук обоев",
+          "description": "Глобально выключить звук обоев."
+        },
+        "audio-volume": {
+          "label": "Громкость обоев",
+          "description": "Настроить громкость видео-обоев."
+        },
+        "steam-integration": {
+          "label": "Интеграция со Steam",
+          "description": "Использовать обои Wallpaper Engine из Steam Workshop.",
+          "error": "Папки обоев Steam не найдены."
+        },
+        "use-steam": {
+          "label": "Использовать обои из Steam",
+          "description": "Использовать файлы Wallpaper Engine как источник обоев.",
+          "disabled-by-wallhaven": "Wallhaven активен; отключите его, чтобы использовать обои Steam."
+        }
+      }
     }
   },
   "setup": {
@@ -2416,7 +2475,8 @@
       "source": {
         "label": "Источник",
         "local": "Локальный",
-        "wallhaven": "Wallhaven"
+        "wallhaven": "Wallhaven",
+        "steam": "Steam"
       },
       "title": "Выбор обоев",
       "wallhaven-settings": {

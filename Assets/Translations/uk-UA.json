@@ -2145,7 +2145,66 @@
           "label": "Позиція"
         }
       },
-      "title": "Шпалери"
+      "title": "Шпалери",
+      "video": {
+        "section": {
+          "label": "Відео шпалери"
+        },
+        "playback-enabled": {
+          "label": "Увімкнути анімовані шпалери",
+          "description": "Програвати відео та GIF замість статичних превʼю."
+        },
+        "lockscreen": {
+          "playback": {
+            "label": "Відео на екрані блокування",
+            "description": "Показувати анімовані шпалери на екрані блокування; вимкніть, щоб там ставити на паузу."
+          },
+          "mute": {
+            "label": "Без звуку на екрані блокування",
+            "description": "Приглушувати звук шпалер, поки активний екран блокування."
+          }
+        },
+        "pause-on-windows": {
+          "label": "Пауза, коли є вікна",
+          "description": "Призупиняти анімовані шпалери, коли на просторі є вікна.",
+          "info": "Білий список: тільки звук. Чорний: не ставить на паузу."
+        },
+        "mute-instead": {
+          "label": "Вимикати звук замість паузи",
+          "description": "Вимикати звук замість паузи, коли відкриті вікна."
+        },
+        "whitelist": {
+          "label": "Винятки для беззвуку",
+          "description": "Не вимикати звук для цих вікон (ID, клас, заголовок чи назва).",
+          "placeholder": "напр.: kitty, firefox, discord",
+          "add": "Додати до винятків беззвуку"
+        },
+        "blacklist": {
+          "label": "Ігнорувати паузу",
+          "description": "Ці вікна не ставлять шпалери на паузу (ID, клас, заголовок чи назва).",
+          "placeholder": "напр.: kitty, code",
+          "add": "Додати до винятків паузи"
+        },
+        "remove-entry": "Видалити запис",
+        "audio-muted": {
+          "label": "Вимкнути звук шпалер",
+          "description": "Глобально вимкнути звук шпалер."
+        },
+        "audio-volume": {
+          "label": "Гучність шпалер",
+          "description": "Налаштувати гучність відео шпалер."
+        },
+        "steam-integration": {
+          "label": "Інтеграція зі Steam",
+          "description": "Використовувати контент Wallpaper Engine зі Steam Workshop.",
+          "error": "Теки шпалер Steam не знайдено."
+        },
+        "use-steam": {
+          "label": "Використовувати шпалери Steam",
+          "description": "Використовувати файли Wallpaper Engine як джерело шпалер.",
+          "disabled-by-wallhaven": "Wallhaven активний; вимкніть його, щоб використовувати шпалери Steam."
+        }
+      }
     }
   },
   "setup": {
@@ -2416,7 +2475,8 @@
       "source": {
         "label": "Джерело",
         "local": "Локальне",
-        "wallhaven": "Wallhaven"
+        "wallhaven": "Wallhaven",
+        "steam": "Steam"
       },
       "title": "Вибір шпалер",
       "wallhaven-settings": {

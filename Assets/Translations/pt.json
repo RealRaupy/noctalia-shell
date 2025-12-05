@@ -2145,7 +2145,66 @@
           "label": "Posição"
         }
       },
-      "title": "Papel de parede"
+      "title": "Papel de parede",
+      "video": {
+        "section": {
+          "label": "Papel de parede de vídeo"
+        },
+        "playback-enabled": {
+          "label": "Ativar papéis de parede animados",
+          "description": "Reproduzir vídeos e GIFs como papel de parede em vez de prévias estáticas."
+        },
+        "lockscreen": {
+          "playback": {
+            "label": "Vídeo na tela de bloqueio",
+            "description": "Continuar exibindo papéis animados na tela de bloqueio; desative para pausá-los lá."
+          },
+          "mute": {
+            "label": "Silenciar na tela de bloqueio",
+            "description": "Silenciar o áudio do papel de parede enquanto a tela de bloqueio estiver ativa."
+          }
+        },
+        "pause-on-windows": {
+          "label": "Pausar quando houver janelas",
+          "description": "Pausar papéis animados quando houver janelas no mesmo espaço de trabalho.",
+          "info": "Whitelist: apenas silenciar. Blacklist: não pausa."
+        },
+        "mute-instead": {
+          "label": "Silenciar em vez de pausar",
+          "description": "Silenciar o áudio em vez de pausar os vídeos quando houver janelas abertas."
+        },
+        "whitelist": {
+          "label": "Exceções de silêncio",
+          "description": "Não silenciar estas janelas (ID, classe, título ou nome).",
+          "placeholder": "ex.: kitty, firefox, discord",
+          "add": "Adicionar à exceção de silêncio"
+        },
+        "blacklist": {
+          "label": "Ignorar pausa",
+          "description": "Estas janelas não ativam a pausa (ID, classe, título ou nome).",
+          "placeholder": "ex.: kitty, code",
+          "add": "Adicionar às exceções de pausa"
+        },
+        "remove-entry": "Remover entrada",
+        "audio-muted": {
+          "label": "Silenciar áudio do papel de parede",
+          "description": "Silenciar globalmente o áudio do papel de parede."
+        },
+        "audio-volume": {
+          "label": "Volume do papel de parede",
+          "description": "Ajustar o volume dos papéis de vídeo."
+        },
+        "steam-integration": {
+          "label": "Integração com Steam",
+          "description": "Usar conteúdos do Wallpaper Engine do Steam Workshop.",
+          "error": "Pastas de papéis de parede do Steam não encontradas."
+        },
+        "use-steam": {
+          "label": "Usar papéis de parede Steam",
+          "description": "Usar arquivos do Wallpaper Engine como fonte de papéis.",
+          "disabled-by-wallhaven": "Wallhaven está ativo; desative para usar papéis do Steam."
+        }
+      }
     }
   },
   "setup": {
@@ -2416,7 +2475,8 @@
       "source": {
         "label": "Fonte",
         "local": "Local",
-        "wallhaven": "Wallhaven"
+        "wallhaven": "Wallhaven",
+        "steam": "Steam"
       },
       "title": "Seletor de papel de parede",
       "wallhaven-settings": {

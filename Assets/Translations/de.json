@@ -2145,7 +2145,66 @@
           "label": "Position"
         }
       },
-      "title": "Hintergrundbild"
+      "title": "Hintergrundbild",
+      "video": {
+        "section": {
+          "label": "Video-Hintergrund"
+        },
+        "playback-enabled": {
+          "label": "Animierte Hintergründe aktivieren",
+          "description": "Videos und GIFs als Hintergrund statt statischer Vorschauen abspielen."
+        },
+        "lockscreen": {
+          "playback": {
+            "label": "Video auf Sperrbildschirm",
+            "description": "Animierte Hintergründe auch auf dem Sperrbildschirm rendern; deaktivieren, um sie dort zu pausieren."
+          },
+          "mute": {
+            "label": "Sperrbildschirm stummschalten",
+            "description": "Hintergrund-Audio stummschalten, solange der Sperrbildschirm aktiv ist."
+          }
+        },
+        "pause-on-windows": {
+          "label": "Bei Fenstern pausieren",
+          "description": "Animierte Hintergründe pausieren, wenn Fenster auf dem Workspace sind.",
+          "info": "Whitelist: nur stummschalten. Blacklist: löst keine Pause aus."
+        },
+        "mute-instead": {
+          "label": "Statt pausieren stummschalten",
+          "description": "Audio stummschalten, anstatt Videos zu pausieren, wenn Fenster offen sind."
+        },
+        "whitelist": {
+          "label": "Stummschalt-Ausnahmen",
+          "description": "Diese Fenster vom Stummschalten ausnehmen (App-ID, Klasse, Titel oder Name).",
+          "placeholder": "z.B. kitty, firefox, discord",
+          "add": "Zur Stummschalt-Ausnahme hinzufügen"
+        },
+        "blacklist": {
+          "label": "Pausieren ignorieren",
+          "description": "Diese Fenster lösen keine Pause aus (App-ID, Klasse, Titel oder Name).",
+          "placeholder": "z.B. kitty, code",
+          "add": "Zur Pause-Ausnahme hinzufügen"
+        },
+        "remove-entry": "Eintrag entfernen",
+        "audio-muted": {
+          "label": "Hintergrund-Audio stummschalten",
+          "description": "Hintergrund-Audio global stummschalten."
+        },
+        "audio-volume": {
+          "label": "Hintergrund-Lautstärke",
+          "description": "Lautstärke für Video-Hintergründe einstellen."
+        },
+        "steam-integration": {
+          "label": "Steam-Integration",
+          "description": "Wallpaper Engine-Inhalte aus dem Steam Workshop verwenden.",
+          "error": "Steam-Wallpaper-Ordner nicht gefunden."
+        },
+        "use-steam": {
+          "label": "Steam-Wallpaper nutzen",
+          "description": "Wallpaper Engine-Dateien als Hintergrundquelle verwenden.",
+          "disabled-by-wallhaven": "Wallhaven ist aktiv; deaktiviere Wallhaven, um Steam-Wallpaper zu verwenden."
+        }
+      }
     }
   },
   "setup": {
@@ -2416,7 +2475,8 @@
       "source": {
         "label": "Quelle",
         "local": "Lokal",
-        "wallhaven": "Wallhaven"
+        "wallhaven": "Wallhaven",
+        "steam": "Steam"
       },
       "title": "Hintergrundbild-Auswahl",
       "wallhaven-settings": {

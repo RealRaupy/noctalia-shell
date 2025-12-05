@@ -2145,7 +2145,66 @@
           "label": "Pozisyon"
         }
       },
-      "title": "Duvar kağıdı"
+      "title": "Duvar kağıdı",
+      "video": {
+        "section": {
+          "label": "Video duvar kâğıdı"
+        },
+        "playback-enabled": {
+          "label": "Animasyonlu duvar kâğıtlarını aç",
+          "description": "Statik önizleme yerine video ve GIF’leri arka planda oynat."
+        },
+        "lockscreen": {
+          "playback": {
+            "label": "Kilit ekranında video",
+            "description": "Animasyonlu arka planları kilit ekranında da göster; kapatınca orada duraklatılır."
+          },
+          "mute": {
+            "label": "Kilit ekranında sessize al",
+            "description": "Kilit ekranı açıkken duvar kâğıdı sesini kapat."
+          }
+        },
+        "pause-on-windows": {
+          "label": "Pencereler varken duraklat",
+          "description": "Aynı çalışma alanında pencere varken animasyonlu duvar kâğıdını duraklat.",
+          "info": "Beyaz liste: sadece sessize al. Kara liste: duraklatmaz."
+        },
+        "mute-instead": {
+          "label": "Duraklatmak yerine sessize al",
+          "description": "Pencereler açıkken videoları duraklatmak yerine sesi kapat."
+        },
+        "whitelist": {
+          "label": "Sessize alma istisnaları",
+          "description": "Bu pencereleri sessize alma (uygulama kimliği, sınıf, başlık veya ad).",
+          "placeholder": "örn. kitty, firefox, discord",
+          "add": "Sessiz istisnaya ekle"
+        },
+        "blacklist": {
+          "label": "Duraklatmayı yoksay",
+          "description": "Bu pencereler duraklatma tetiklemez (uygulama kimliği, sınıf, başlık veya ad).",
+          "placeholder": "örn. kitty, code",
+          "add": "Duraklatma istisnasına ekle"
+        },
+        "remove-entry": "Girdiyi sil",
+        "audio-muted": {
+          "label": "Duvar kâğıdı sesini kapat",
+          "description": "Duvar kâğıdı sesini genel olarak kapat."
+        },
+        "audio-volume": {
+          "label": "Duvar kâğıdı sesi",
+          "description": "Video duvar kâğıtlarının sesini ayarla."
+        },
+        "steam-integration": {
+          "label": "Steam entegrasyonu",
+          "description": "Steam Atölyesi’nden Wallpaper Engine içeriklerini kullan.",
+          "error": "Steam duvar kâğıdı klasörleri bulunamadı."
+        },
+        "use-steam": {
+          "label": "Steam duvar kâğıtlarını kullan",
+          "description": "Wallpaper Engine dosyalarını kaynak olarak kullan.",
+          "disabled-by-wallhaven": "Wallhaven açık; Steam duvar kâğıdı için devre dışı bırakın."
+        }
+      }
     }
   },
   "setup": {
@@ -2416,7 +2475,8 @@
       "source": {
         "label": "Kaynak",
         "local": "Yerel",
-        "wallhaven": "Wallhaven"
+        "wallhaven": "Wallhaven",
+        "steam": "Steam"
       },
       "title": "Duvar kağıdı seçici",
       "wallhaven-settings": {

@@ -2145,7 +2145,66 @@
           "label": "Position"
         }
       },
-      "title": "Fond d'écran"
+      "title": "Fond d'écran",
+      "video": {
+        "section": {
+          "label": "Fond vidéo"
+        },
+        "playback-enabled": {
+          "label": "Activer les fonds animés",
+          "description": "Lire des vidéos et GIF en fond au lieu des aperçus statiques."
+        },
+        "lockscreen": {
+          "playback": {
+            "label": "Vidéo sur l’écran de verrouillage",
+            "description": "Afficher aussi les fonds animés sur l’écran de verrouillage ; désactivez pour les y mettre en pause."
+          },
+          "mute": {
+            "label": "Muet sur l’écran de verrouillage",
+            "description": "Couper le son du fond tant que l’écran de verrouillage est actif."
+          }
+        },
+        "pause-on-windows": {
+          "label": "Mettre en pause si des fenêtres sont ouvertes",
+          "description": "Mettre en pause les fonds animés quand des fenêtres sont sur l’espace de travail.",
+          "info": "Liste blanche : juste muet. Liste noire : ne déclenche pas de pause."
+        },
+        "mute-instead": {
+          "label": "Muet au lieu de pause",
+          "description": "Couper le son au lieu de mettre en pause quand des fenêtres sont ouvertes."
+        },
+        "whitelist": {
+          "label": "Exceptions de silence",
+          "description": "Ne pas couper le son pour ces fenêtres (ID appli, classe, titre ou nom).",
+          "placeholder": "ex. kitty, firefox, discord",
+          "add": "Ajouter aux exceptions de silence"
+        },
+        "blacklist": {
+          "label": "Ignorer la pause",
+          "description": "Ces fenêtres ne déclenchent pas de pause (ID, classe, titre ou nom).",
+          "placeholder": "ex. kitty, code",
+          "add": "Ajouter aux exceptions de pause"
+        },
+        "remove-entry": "Supprimer l’entrée",
+        "audio-muted": {
+          "label": "Couper le son du fond",
+          "description": "Couper globalement le son du fond."
+        },
+        "audio-volume": {
+          "label": "Volume du fond",
+          "description": "Régler le volume des fonds vidéo."
+        },
+        "steam-integration": {
+          "label": "Intégration Steam",
+          "description": "Utiliser les contenus Wallpaper Engine du Steam Workshop.",
+          "error": "Dossiers de fonds Steam introuvables."
+        },
+        "use-steam": {
+          "label": "Utiliser les fonds Steam",
+          "description": "Utiliser les fichiers Wallpaper Engine comme source de fonds.",
+          "disabled-by-wallhaven": "Wallhaven est actif ; désactivez-le pour utiliser les fonds Steam."
+        }
+      }
     }
   },
   "setup": {
@@ -2416,7 +2475,8 @@
       "source": {
         "label": "Source",
         "local": "Local",
-        "wallhaven": "Wallhaven"
+        "wallhaven": "Wallhaven",
+        "steam": "Steam"
       },
       "title": "Sélecteur de fond d'écran",
       "wallhaven-settings": {

@@ -2145,7 +2145,66 @@
           "label": "Positie"
         }
       },
-      "title": "Achtergrond"
+      "title": "Achtergrond",
+      "video": {
+        "section": {
+          "label": "Video-achtergrond"
+        },
+        "playback-enabled": {
+          "label": "Animaties als achtergrond inschakelen",
+          "description": "Video’s en GIF’s als achtergrond afspelen in plaats van statische previews."
+        },
+        "lockscreen": {
+          "playback": {
+            "label": "Video op vergrendelscherm",
+            "description": "Animaties ook op het vergrendelscherm tonen; uitzetten om ze daar te pauzeren."
+          },
+          "mute": {
+            "label": "Dempen op vergrendelscherm",
+            "description": "Achtergrondaudio dempen zolang het vergrendelscherm actief is."
+          }
+        },
+        "pause-on-windows": {
+          "label": "Pauzeren bij vensters",
+          "description": "Animaties pauzeren wanneer er vensters op de workspace staan.",
+          "info": "Whitelist: alleen dempen. Blacklist: triggert geen pauze."
+        },
+        "mute-instead": {
+          "label": "Dempen i.p.v. pauzeren",
+          "description": "Audio dempen in plaats van pauzeren wanneer er vensters open zijn."
+        },
+        "whitelist": {
+          "label": "Uitzonderingen op dempen",
+          "description": "Deze vensters niet dempen (app-ID, klasse, titel of naam).",
+          "placeholder": "bijv. kitty, firefox, discord",
+          "add": "Toevoegen aan mute-uitzonderingen"
+        },
+        "blacklist": {
+          "label": "Pauze negeren",
+          "description": "Deze vensters veroorzaken geen pauze (app-ID, klasse, titel of naam).",
+          "placeholder": "bijv. kitty, code",
+          "add": "Toevoegen aan pauze-uitzonderingen"
+        },
+        "remove-entry": "Item verwijderen",
+        "audio-muted": {
+          "label": "Achtergrondgeluid dempen",
+          "description": "Achtergrondgeluid overal dempen."
+        },
+        "audio-volume": {
+          "label": "Achtergrondvolume",
+          "description": "Volume voor video-achtergronden instellen."
+        },
+        "steam-integration": {
+          "label": "Steam-integratie",
+          "description": "Wallpaper Engine-inhoud uit de Steam Workshop gebruiken.",
+          "error": "Steam-wallpaper-mappen niet gevonden."
+        },
+        "use-steam": {
+          "label": "Steam-wallpapers gebruiken",
+          "description": "Wallpaper Engine-bestanden als bron gebruiken.",
+          "disabled-by-wallhaven": "Wallhaven is actief; schakel uit om Steam-wallpapers te gebruiken."
+        }
+      }
     }
   },
   "setup": {
@@ -2416,7 +2475,8 @@
       "source": {
         "label": "Bron",
         "local": "Lokaal",
-        "wallhaven": "Wallhaven"
+        "wallhaven": "Wallhaven",
+        "steam": "Steam"
       },
       "title": "Achtergrondkiezer",
       "wallhaven-settings": {

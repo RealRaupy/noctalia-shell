@@ -2145,7 +2145,66 @@
           "label": "Posición"
         }
       },
-      "title": "Fondo de pantalla"
+      "title": "Fondo de pantalla",
+      "video": {
+        "section": {
+          "label": "Fondo de video"
+        },
+        "playback-enabled": {
+          "label": "Activar fondos animados",
+          "description": "Reproducir vídeos y GIF como fondo en lugar de vistas previas estáticas."
+        },
+        "lockscreen": {
+          "playback": {
+            "label": "Video en pantalla de bloqueo",
+            "description": "Seguir mostrando fondos animados en la pantalla de bloqueo; desactiva para pausarlos allí."
+          },
+          "mute": {
+            "label": "Silenciar en pantalla de bloqueo",
+            "description": "Silenciar el audio del fondo mientras la pantalla de bloqueo está activa."
+          }
+        },
+        "pause-on-windows": {
+          "label": "Pausar con ventanas abiertas",
+          "description": "Pausar fondos animados cuando hay ventanas en el mismo espacio de trabajo.",
+          "info": "Lista blanca: solo silenciar. Lista negra: no provoca pausa."
+        },
+        "mute-instead": {
+          "label": "Silenciar en vez de pausar",
+          "description": "Silenciar el audio en vez de pausar los vídeos cuando hay ventanas abiertas."
+        },
+        "whitelist": {
+          "label": "Excepciones de silencio",
+          "description": "No silenciar estas ventanas (ID de app, clase, título o nombre).",
+          "placeholder": "p. ej. kitty, firefox, discord",
+          "add": "Añadir a excepciones de silencio"
+        },
+        "blacklist": {
+          "label": "Ignorar pausa",
+          "description": "Estas ventanas no provocan pausa (ID de app, clase, título o nombre).",
+          "placeholder": "p. ej. kitty, code",
+          "add": "Añadir a excepciones de pausa"
+        },
+        "remove-entry": "Eliminar entrada",
+        "audio-muted": {
+          "label": "Silenciar audio del fondo",
+          "description": "Silenciar globalmente el audio del fondo."
+        },
+        "audio-volume": {
+          "label": "Volumen del fondo",
+          "description": "Ajustar el volumen para fondos de video."
+        },
+        "steam-integration": {
+          "label": "Integración con Steam",
+          "description": "Usar contenidos de Wallpaper Engine del Steam Workshop.",
+          "error": "No se encontraron las carpetas de fondos de Steam."
+        },
+        "use-steam": {
+          "label": "Usar fondos de Steam",
+          "description": "Usar archivos de Wallpaper Engine como fuente de fondos.",
+          "disabled-by-wallhaven": "Wallhaven está activo; desactívalo para usar fondos de Steam."
+        }
+      }
     }
   },
   "setup": {
@@ -2416,7 +2475,8 @@
       "source": {
         "label": "Fuente",
         "local": "Local",
-        "wallhaven": "Wallhaven"
+        "wallhaven": "Wallhaven",
+        "steam": "Steam"
       },
       "title": "Selector de fondo de pantalla",
       "wallhaven-settings": {

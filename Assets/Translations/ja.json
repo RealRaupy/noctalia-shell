@@ -2145,7 +2145,66 @@
           "label": "表示位置"
         }
       },
-      "title": "壁紙"
+      "title": "壁紙",
+      "video": {
+        "section": {
+          "label": "動画壁紙"
+        },
+        "playback-enabled": {
+          "label": "アニメーション壁紙を有効化",
+          "description": "静止プレビューの代わりに動画やGIFを壁紙として再生します。"
+        },
+        "lockscreen": {
+          "playback": {
+            "label": "ロックスクリーンで動画",
+            "description": "ロックスクリーンでもアニメ壁紙を表示します。無効化でそこで一時停止。"
+          },
+          "mute": {
+            "label": "ロックスクリーンでミュート",
+            "description": "ロックスクリーン表示中は壁紙の音声をミュートします。"
+          }
+        },
+        "pause-on-windows": {
+          "label": "ウィンドウがあるとき一時停止",
+          "description": "同じワークスペースにウィンドウがあるときアニメ壁紙を一時停止。",
+          "info": "ホワイトリスト: ミュートのみ。ブラックリスト: 一時停止なし。"
+        },
+        "mute-instead": {
+          "label": "一時停止の代わりにミュート",
+          "description": "ウィンドウが開いているときは再生を止めずミュートにする。"
+        },
+        "whitelist": {
+          "label": "ミュート例外",
+          "description": "これらのウィンドウはミュートしない（アプリID/クラス/タイトル/名前）。",
+          "placeholder": "例: kitty, firefox, discord",
+          "add": "ミュート例外に追加"
+        },
+        "blacklist": {
+          "label": "一時停止を無視",
+          "description": "これらのウィンドウでは一時停止しない（アプリID/クラス/タイトル/名前）。",
+          "placeholder": "例: kitty, code",
+          "add": "一時停止例外に追加"
+        },
+        "remove-entry": "項目を削除",
+        "audio-muted": {
+          "label": "壁紙の音声をミュート",
+          "description": "壁紙の音声を全体でミュートします。"
+        },
+        "audio-volume": {
+          "label": "壁紙の音量",
+          "description": "動画壁紙の音量を調整します。"
+        },
+        "steam-integration": {
+          "label": "Steam 連携",
+          "description": "Steam ワークショップの Wallpaper Engine コンテンツを使う。",
+          "error": "Steam の壁紙フォルダーが見つかりません。"
+        },
+        "use-steam": {
+          "label": "Steam の壁紙を使う",
+          "description": "Wallpaper Engine のファイルを壁紙ソースとして使用。",
+          "disabled-by-wallhaven": "Wallhaven が有効です。Steam 壁紙を使うには無効化してください。"
+        }
+      }
     }
   },
   "setup": {
@@ -2416,7 +2475,8 @@
       "source": {
         "label": "取得元",
         "local": "ローカル",
-        "wallhaven": "Wallhaven"
+        "wallhaven": "Wallhaven",
+        "steam": "Steam"
       },
       "title": "壁紙選択パネル",
       "wallhaven-settings": {
