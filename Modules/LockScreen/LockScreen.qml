@@ -138,7 +138,7 @@ Loader {
             }
 
             lockBackgroundLoader.sourceComponent = playbackEnabled ? lockVideoComponent : lockImageComponent;
-            wallpaperDisplay = playbackEnabled ? wallpaperPath : WallpaperService.getPreviewPath(wallpaperPath);
+            wallpaperDisplay = playbackEnabled ? wallpaperPath : WallpaperService.getPreviewForDisplay(wallpaperPath);
 
             if (lockBackgroundLoader.item && lockBackgroundLoader.item.setSource) {
               lockBackgroundLoader.item.setSource(wallpaperDisplay);

@@ -638,16 +638,23 @@ Variants {
           return;
         }
 
-        var activeWorkspaces = CompositorService.getActiveWorkspaces();
         var targetWorkspaceId = -1;
-        for (var i = 0; i < activeWorkspaces.length; i++) {
-          if (activeWorkspaces[i].output && activeWorkspaces[i].output === modelData.name) {
-            targetWorkspaceId = activeWorkspaces[i].id;
+        var fallbackWorkspaceId = -1;
+        for (var i = 0; i < CompositorService.workspaces.count; i++) {
+          var ws = CompositorService.workspaces.get(i);
+          if (ws.output !== modelData.name) {
+            continue;
+          }
+          if (ws.isFocused || ws.isActive) {
+            targetWorkspaceId = ws.id;
             break;
           }
+          if (fallbackWorkspaceId === -1) {
+            fallbackWorkspaceId = ws.id;
+          }
         }
-        if (targetWorkspaceId === -1 && activeWorkspaces.length > 0) {
-          targetWorkspaceId = activeWorkspaces[0].id;
+        if (targetWorkspaceId === -1) {
+          targetWorkspaceId = fallbackWorkspaceId;
         }
 
         var windows = CompositorService.windows;
@@ -655,8 +662,8 @@ Variants {
 
         for (var w = 0; w < windows.count; w++) {
           var win = windows.get(w);
-          var sameWorkspace = targetWorkspaceId !== -1 ? win.workspaceId === targetWorkspaceId : true;
-          var sameOutput = win.output === modelData.name || (!win.output && sameWorkspace);
+          var sameWorkspace = targetWorkspaceId !== -1 && win.workspaceId === targetWorkspaceId;
+          var sameOutput = win.output && win.output === modelData.name;
           if (!sameWorkspace && !sameOutput) {
             continue;
           }
@@ -686,18 +693,18 @@ Variants {
 
       function applySuspensionState() {
         if (currentFallback.item) {
-          if (currentFallback.item.hasOwnProperty && currentFallback.item.hasOwnProperty("suspended")) {
+          if ("suspended" in currentFallback.item) {
             currentFallback.item.suspended = wallpaperSuspended;
           }
-          if (currentFallback.item.hasOwnProperty && currentFallback.item.hasOwnProperty("muteForWindows")) {
+          if ("muteForWindows" in currentFallback.item) {
             currentFallback.item.muteForWindows = wallpaperMuteForWindows;
           }
         }
         if (nextFallback.item) {
-          if (nextFallback.item.hasOwnProperty && nextFallback.item.hasOwnProperty("suspended")) {
+          if ("suspended" in nextFallback.item) {
             nextFallback.item.suspended = wallpaperSuspended;
           }
-          if (nextFallback.item.hasOwnProperty && nextFallback.item.hasOwnProperty("muteForWindows")) {
+          if ("muteForWindows" in nextFallback.item) {
             nextFallback.item.muteForWindows = wallpaperMuteForWindows;
           }
         }
