@@ -192,7 +192,7 @@ ColumnLayout {
             color: Color.mSurfaceVariant
             border.color: Color.mOutline
             border.width: Style.borderS
-            height: Style.baseWidgetSize * 0.55
+            height: Math.max(Style.baseWidgetSize * 0.7, chipRow.implicitHeight + Style.marginS)
             implicitWidth: chipRow.implicitWidth + Style.marginS * 2
 
             RowLayout {
@@ -267,7 +267,7 @@ ColumnLayout {
             color: Color.mSurfaceVariant
             border.color: Color.mOutline
             border.width: Style.borderS
-            height: Style.baseWidgetSize * 0.55
+            height: Math.max(Style.baseWidgetSize * 0.7, chipRow.implicitHeight + Style.marginS)
             implicitWidth: chipRow.implicitWidth + Style.marginS * 2
 
             RowLayout {
