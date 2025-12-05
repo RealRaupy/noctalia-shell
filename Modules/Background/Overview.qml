@@ -17,6 +17,7 @@ Loader {
 
       required property ShellScreen modelData
       property string wallpaper: ""
+      property string wallpaperDisplay: ""
 
       Component.onCompleted: {
         if (modelData) {
@@ -38,6 +39,12 @@ Loader {
         function onWallpaperChanged(screenName, path) {
           if (screenName === modelData.name) {
             wallpaper = path;
+            updateDisplaySource();
+          }
+        }
+        function onWallpaperPreviewReady(originalPath, previewPath) {
+          if (wallpaper === originalPath) {
+            updateDisplaySource();
           }
         }
       }
@@ -50,7 +57,24 @@ Loader {
         const wallpaperPath = WallpaperService.getWallpaper(modelData.name);
         if (wallpaperPath && wallpaperPath !== wallpaper) {
           wallpaper = wallpaperPath;
+          updateDisplaySource();
         }
+      }
+
+      function updateDisplaySource() {
+        if (!wallpaper || wallpaper === "") {
+          wallpaperDisplay = "";
+          return;
+        }
+
+        if (WallpaperService.isVideoFile(wallpaper)) {
+          WallpaperService.generateWallpaperPreview(wallpaper);
+          wallpaperDisplay = WallpaperService.getPreviewPath(wallpaper);
+        } else {
+          wallpaperDisplay = wallpaper;
+        }
+
+        bgImage.source = wallpaperDisplay;
       }
 
       color: Color.transparent
@@ -70,7 +94,7 @@ Loader {
         id: bgImage
         anchors.fill: parent
         fillMode: Image.PreserveAspectCrop
-        source: wallpaper
+        source: wallpaperDisplay
         smooth: true
         mipmap: false
         cache: false

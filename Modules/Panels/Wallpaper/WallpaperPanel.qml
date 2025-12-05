@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import "../../../Helpers/FuzzySort.js" as FuzzySort
 import qs.Commons
 import qs.Modules.MainScreen
@@ -16,6 +17,11 @@ SmartPanel {
   preferredHeight: 600 * Style.uiScaleRatio
   preferredWidthRatio: 0.5
   preferredHeightRatio: 0.45
+  property bool steamWallpaperAvailable: false
+  property bool steamWallpaperCheckDone: false
+  Component.onCompleted: {
+    steamWallpaperCheck.running = true;
+  }
 
   // Positioning
   readonly property string panelPosition: {
@@ -100,6 +106,12 @@ SmartPanel {
     }
   }
 
+  function triggerPreviewPrewarm() {
+    if (!previewPrewarmProcess.running) {
+      previewPrewarmProcess.running = true;
+    }
+  }
+
   panelContent: Rectangle {
     id: wallpaperPanel
 
@@ -168,7 +180,7 @@ SmartPanel {
     }
 
     // Focus management
-    Connections {
+      Connections {
       target: root
       function onOpened() {
         // Ensure contentItem is set
@@ -181,6 +193,10 @@ SmartPanel {
                          searchInput.inputItem.forceActiveFocus();
                        }
                      });
+        if (!Settings.data.wallpaper.useWallhaven) {
+          WallpaperService.generateAllVideoPreviews();
+          WallpaperService.generateAllVideoPreviewsRecursive();
+        }
       }
     }
 
@@ -387,17 +403,26 @@ SmartPanel {
           id: sourceComboBox
           Layout.fillWidth: false
 
-          model: [
-            {
-              "key": "local",
-              "name": I18n.tr("wallpaper.panel.source.local")
-            },
-            {
-              "key": "wallhaven",
-              "name": I18n.tr("wallpaper.panel.source.wallhaven")
+          model: {
+            var options = [
+              {
+                "key": "local",
+                "name": I18n.tr("wallpaper.panel.source.local")
+              }
+            ];
+            if (steamWallpaperAvailable && Settings.data.wallpaper.steamWallpaperIntegration) {
+              options.push({
+                             "key": "steam",
+                             "name": I18n.tr("wallpaper.panel.source.steam")
+                           });
             }
-          ]
-          currentKey: Settings.data.wallpaper.useWallhaven ? "wallhaven" : "local"
+            options.push({
+                           "key": "wallhaven",
+                           "name": I18n.tr("wallpaper.panel.source.wallhaven")
+                         });
+            return options;
+          }
+          currentKey: Settings.data.wallpaper.useWallhaven ? "wallhaven" : (Settings.data.wallpaper.useSteamWallpapers ? "steam" : "local")
           property bool skipNextSelected: false
           Component.onCompleted: {
             // Skip the first onSelected if it fires during initialization
@@ -411,7 +436,14 @@ SmartPanel {
                           return;
                         }
                         var useWallhaven = (key === "wallhaven");
+                        var useSteam = (key === "steam");
                         Settings.data.wallpaper.useWallhaven = useWallhaven;
+                        Settings.data.wallpaper.useSteamWallpapers = useSteam;
+                        if (useSteam) {
+                          Settings.data.wallpaper.useWallhaven = false;
+                        } else if (!useWallhaven) {
+                          Settings.data.wallpaper.useSteamWallpapers = false;
+                        }
                         // Update search input text based on mode
                         if (useWallhaven) {
                           searchInput.text = Settings.data.wallpaper.wallhavenQuery || "";
@@ -435,6 +467,9 @@ SmartPanel {
                             wallhavenView.loading = true;
                             WallhavenService.search(Settings.data.wallpaper.wallhavenQuery || "", 1);
                           }
+                        } else if (!useWallhaven) {
+                          WallpaperService.generateAllVideoPreviews();
+                          WallpaperService.generateAllVideoPreviewsRecursive();
                         }
                       }
         }
@@ -537,11 +572,24 @@ SmartPanel {
       }
     }
 
+    Connections {
+      target: Settings.data.wallpaper
+      function onVideoPlaybackEnabledChanged() {
+        refreshWallpaperScreenData();
+      }
+    }
+
     function refreshWallpaperScreenData() {
       if (targetScreen === null) {
         return;
       }
-      wallpapersList = WallpaperService.getWallpapersList(targetScreen.name);
+      var list = WallpaperService.getWallpapersList(targetScreen.name);
+      if (!Settings.data.wallpaper.videoPlaybackEnabled) {
+        list = list.filter(function (p) {
+          return !WallpaperService.isVideoFile(p);
+        });
+      }
+      wallpapersList = list;
       Logger.d("WallpaperPanel", "Got", wallpapersList.length, "wallpapers for screen", targetScreen.name);
 
       // Pre-compute basenames once for better performance
@@ -683,9 +731,26 @@ SmartPanel {
           property string wallpaperPath: modelData
           property bool isSelected: (wallpaperPath === currentWallpaper)
           property string filename: wallpaperPath.split('/').pop()
+          property bool isVideo: WallpaperService.isVideoFile(wallpaperPath)
+          property string displaySource: isVideo ? WallpaperService.getPreviewPath(wallpaperPath) : wallpaperPath
 
           width: wallpaperGridView.itemSize
           spacing: Style.marginXS
+
+          Component.onCompleted: {
+            if (isVideo) {
+              WallpaperService.generateWallpaperPreview(wallpaperPath);
+            }
+          }
+
+          Connections {
+            target: WallpaperService
+            function onWallpaperPreviewReady(originalPath, previewPath) {
+              if (originalPath === wallpaperPath) {
+                displaySource = previewPath;
+              }
+            }
+          }
 
           Rectangle {
             id: imageContainer
@@ -695,7 +760,7 @@ SmartPanel {
 
             NImageCached {
               id: img
-              imagePath: wallpaperPath
+              imagePath: displaySource
               cacheFolder: Settings.cacheDirImagesWallpapers
               anchors.fill: parent
             }
@@ -731,6 +796,26 @@ SmartPanel {
                 icon: "check"
                 pointSize: Style.fontSizeM
                 color: Color.mOnSecondary
+                anchors.centerIn: parent
+              }
+            }
+
+            Rectangle {
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.margins: Style.marginS
+              width: 28
+              height: 28
+              radius: width / 2
+              color: Color.mSurface
+              border.color: Color.mOutline
+              border.width: Style.borderS
+              visible: isVideo
+
+              NIcon {
+                icon: "movie"
+                pointSize: Style.fontSizeS
+                color: Color.mOnSurface
                 anchors.centerIn: parent
               }
             }
@@ -1247,5 +1332,25 @@ SmartPanel {
         });
       }
     }
+  }
+
+  Process {
+    id: steamWallpaperCheck
+    command: ["bash", "-lc", `${Quickshell.shellDir}/Bin/check-steam-wallpaper.sh`]
+    running: false
+    stdout: StdioCollector {}
+    stderr: StdioCollector {}
+    onExited: function (exitCode) {
+      steamWallpaperCheckDone = true;
+      steamWallpaperAvailable = exitCode === 0;
+    }
+  }
+
+  Process {
+    id: previewPrewarmProcess
+    command: ["bash", "-lc", `${Quickshell.shellDir}/Bin/prewarm-video-wallpapers.sh`]
+    running: false
+    stdout: StdioCollector {}
+    stderr: StdioCollector {}
   }
 }

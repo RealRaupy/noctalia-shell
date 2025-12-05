@@ -12,8 +12,60 @@ ColumnLayout {
   id: root
 
   property string specificFolderMonitorName: ""
+  property bool steamWallpaperAvailable: false
+  property bool steamWallpaperCheckDone: false
+
+  function ensureVideoAudioMode() {
+    if (Settings.data.wallpaper.videoAudioMode !== "per_monitor") {
+      Settings.data.wallpaper.videoAudioMode = "per_monitor";
+    }
+  }
+
+  function addToList(propName, value) {
+    var trimmed = (value || "").trim();
+    if (trimmed === "") {
+      return;
+    }
+    var current = Settings.data.wallpaper[propName] || [];
+    if (current.indexOf(trimmed) !== -1) {
+      return;
+    }
+    var updated = current.slice();
+    updated.push(trimmed);
+    Settings.data.wallpaper[propName] = updated;
+  }
+
+  function removeFromList(propName, value) {
+    var current = Settings.data.wallpaper[propName] || [];
+    var idx = current.indexOf(value);
+    if (idx === -1) {
+      return;
+    }
+    var updated = current.slice();
+    updated.splice(idx, 1);
+    Settings.data.wallpaper[propName] = updated;
+  }
+
+  Component.onCompleted: {
+    ensureVideoAudioMode();
+    steamWallpaperCheck.running = true;
+  }
 
   spacing: Style.marginL
+
+  Connections {
+    target: Settings.data.wallpaper
+    function onUseWallhavenChanged() {
+      if (Settings.data.wallpaper.useWallhaven) {
+        Settings.data.wallpaper.useSteamWallpapers = false;
+      }
+    }
+    function onUseSteamWallpapersChanged() {
+      if (Settings.data.wallpaper.useSteamWallpapers) {
+        Settings.data.wallpaper.useWallhaven = false;
+      }
+    }
+  }
 
   NHeader {
     label: I18n.tr("settings.wallpaper.settings.section.label")
@@ -35,6 +87,275 @@ ColumnLayout {
     checked: Settings.data.wallpaper.overviewEnabled
     onToggled: checked => Settings.data.wallpaper.overviewEnabled = checked
     Layout.bottomMargin: Style.marginL
+  }
+
+  NDivider {
+    visible: Settings.data.wallpaper.enabled
+    Layout.fillWidth: true
+    Layout.topMargin: Style.marginL
+    Layout.bottomMargin: Style.marginL
+  }
+
+  ColumnLayout {
+    visible: Settings.data.wallpaper.enabled
+    spacing: Style.marginL
+    Layout.fillWidth: true
+
+    NHeader {
+      label: I18n.tr("settings.wallpaper.video.section.label")
+    }
+
+    NToggle {
+      label: I18n.tr("settings.wallpaper.video.playback-enabled.label")
+      description: I18n.tr("settings.wallpaper.video.playback-enabled.description")
+      checked: Settings.data.wallpaper.videoPlaybackEnabled
+      onToggled: checked => Settings.data.wallpaper.videoPlaybackEnabled = checked
+    }
+
+    NToggle {
+      label: I18n.tr("settings.wallpaper.video.lockscreen.playback.label")
+      description: I18n.tr("settings.wallpaper.video.lockscreen.playback.description")
+      checked: Settings.data.wallpaper.lockScreenVideoEnabled
+      enabled: Settings.data.wallpaper.videoPlaybackEnabled
+      onToggled: checked => Settings.data.wallpaper.lockScreenVideoEnabled = checked
+    }
+
+    NToggle {
+      label: I18n.tr("settings.wallpaper.video.lockscreen.mute.label")
+      description: I18n.tr("settings.wallpaper.video.lockscreen.mute.description")
+      checked: Settings.data.wallpaper.lockScreenVideoMuted
+      enabled: Settings.data.wallpaper.videoPlaybackEnabled && Settings.data.wallpaper.lockScreenVideoEnabled
+      onToggled: checked => Settings.data.wallpaper.lockScreenVideoMuted = checked
+    }
+
+    NToggle {
+      label: I18n.tr("settings.wallpaper.video.pause-on-windows.label")
+      description: I18n.tr("settings.wallpaper.video.pause-on-windows.description")
+      checked: Settings.data.wallpaper.pauseVideoOnWindows
+      enabled: Settings.data.wallpaper.videoPlaybackEnabled
+      onToggled: checked => Settings.data.wallpaper.pauseVideoOnWindows = checked
+    }
+
+    NToggle {
+      label: I18n.tr("settings.wallpaper.video.mute-instead.label")
+      description: I18n.tr("settings.wallpaper.video.mute-instead.description")
+      checked: Settings.data.wallpaper.muteInsteadOfPauseOnWindows
+      enabled: Settings.data.wallpaper.videoPlaybackEnabled && Settings.data.wallpaper.pauseVideoOnWindows
+      onToggled: checked => Settings.data.wallpaper.muteInsteadOfPauseOnWindows = checked
+    }
+
+    ColumnLayout {
+      visible: Settings.data.wallpaper.videoPlaybackEnabled && Settings.data.wallpaper.pauseVideoOnWindows
+      spacing: Style.marginS
+      Layout.fillWidth: true
+
+      NLabel {
+        label: I18n.tr("settings.wallpaper.video.whitelist.label")
+        description: I18n.tr("settings.wallpaper.video.whitelist.description")
+      }
+
+      RowLayout {
+        spacing: Style.marginS
+        Layout.fillWidth: true
+
+        NTextInput {
+          id: whitelistInput
+          placeholderText: I18n.tr("settings.wallpaper.video.whitelist.placeholder")
+          Layout.fillWidth: true
+          onEditingFinished: {
+            addToList("pauseVideoOnWindowsMuteWhitelist", text);
+            text = "";
+          }
+        }
+
+        NIconButton {
+          icon: "plus"
+          baseSize: Style.baseWidgetSize * 0.8
+          enabled: Settings.data.wallpaper.videoPlaybackEnabled
+          onClicked: {
+            addToList("pauseVideoOnWindowsMuteWhitelist", whitelistInput.text);
+            whitelistInput.text = "";
+          }
+        }
+      }
+
+      Flow {
+        spacing: Style.marginS
+        Layout.fillWidth: true
+
+        Repeater {
+          model: Settings.data.wallpaper.pauseVideoOnWindowsMuteWhitelist || []
+          delegate: Rectangle {
+            required property var modelData
+
+            radius: Style.radiusM
+            color: Color.mSurfaceVariant
+            border.color: Color.mOutline
+            border.width: Style.borderS
+            height: Style.baseWidgetSize * 0.55
+            implicitWidth: chipRow.implicitWidth + Style.marginS * 2
+
+            RowLayout {
+              id: chipRow
+              anchors.fill: parent
+              anchors.margins: Style.marginXS
+              spacing: Style.marginXS
+
+              NText {
+                text: modelData
+                pointSize: Style.fontSizeS
+                color: Color.mOnSurface
+              }
+
+              NIconButton {
+                icon: "x"
+                baseSize: Style.baseWidgetSize * 0.55
+                tooltipText: I18n.tr("settings.wallpaper.video.remove-entry")
+                onClicked: removeFromList("pauseVideoOnWindowsMuteWhitelist", modelData)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    ColumnLayout {
+      visible: Settings.data.wallpaper.videoPlaybackEnabled && Settings.data.wallpaper.pauseVideoOnWindows
+      spacing: Style.marginS
+      Layout.fillWidth: true
+
+      NLabel {
+        label: I18n.tr("settings.wallpaper.video.blacklist.label")
+        description: I18n.tr("settings.wallpaper.video.blacklist.description")
+      }
+
+      RowLayout {
+        spacing: Style.marginS
+        Layout.fillWidth: true
+
+        NTextInput {
+          id: blacklistInput
+          placeholderText: I18n.tr("settings.wallpaper.video.blacklist.placeholder")
+          Layout.fillWidth: true
+          onEditingFinished: {
+            addToList("pauseVideoOnWindowsBlacklist", text);
+            text = "";
+          }
+        }
+
+        NIconButton {
+          icon: "plus"
+          baseSize: Style.baseWidgetSize * 0.8
+          enabled: Settings.data.wallpaper.videoPlaybackEnabled
+          onClicked: {
+            addToList("pauseVideoOnWindowsBlacklist", blacklistInput.text);
+            blacklistInput.text = "";
+          }
+        }
+      }
+
+      Flow {
+        spacing: Style.marginS
+        Layout.fillWidth: true
+
+        Repeater {
+          model: Settings.data.wallpaper.pauseVideoOnWindowsBlacklist || []
+          delegate: Rectangle {
+            required property var modelData
+
+            radius: Style.radiusM
+            color: Color.mSurfaceVariant
+            border.color: Color.mOutline
+            border.width: Style.borderS
+            height: Style.baseWidgetSize * 0.55
+            implicitWidth: chipRow.implicitWidth + Style.marginS * 2
+
+            RowLayout {
+              id: chipRow
+              anchors.fill: parent
+              anchors.margins: Style.marginXS
+              spacing: Style.marginXS
+
+              NText {
+                text: modelData
+                pointSize: Style.fontSizeS
+                color: Color.mOnSurface
+              }
+
+              NIconButton {
+                icon: "x"
+                baseSize: Style.baseWidgetSize * 0.55
+                tooltipText: I18n.tr("settings.wallpaper.video.remove-entry")
+                onClicked: removeFromList("pauseVideoOnWindowsBlacklist", modelData)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    NToggle {
+      label: I18n.tr("settings.wallpaper.video.audio-muted.label")
+      description: I18n.tr("settings.wallpaper.video.audio-muted.description")
+      checked: Settings.data.wallpaper.videoAudioMuted
+      enabled: Settings.data.wallpaper.videoPlaybackEnabled
+      onToggled: checked => Settings.data.wallpaper.videoAudioMuted = checked
+    }
+
+    ColumnLayout {
+      spacing: Style.marginS
+      enabled: Settings.data.wallpaper.videoPlaybackEnabled
+
+      NLabel {
+        label: I18n.tr("settings.wallpaper.video.audio-volume.label")
+        description: I18n.tr("settings.wallpaper.video.audio-volume.description")
+      }
+
+      NValueSlider {
+        Layout.fillWidth: true
+        from: 0.0
+        to: 1.0
+        stepSize: 0.01
+        value: Settings.data.wallpaper.videoAudioVolume
+        onMoved: value => Settings.data.wallpaper.videoAudioVolume = value
+        text: Math.round(Settings.data.wallpaper.videoAudioVolume * 100) + "%"
+      }
+    }
+
+    NToggle {
+      label: I18n.tr("settings.wallpaper.video.steam-integration.label")
+      description: steamWallpaperCheckDone && !steamWallpaperAvailable ? I18n.tr("settings.wallpaper.video.steam-integration.error") : I18n.tr("settings.wallpaper.video.steam-integration.description")
+      checked: Settings.data.wallpaper.steamWallpaperIntegration
+      enabled: steamWallpaperAvailable
+      onToggled: checked => {
+        Settings.data.wallpaper.steamWallpaperIntegration = checked;
+        if (!checked) {
+          Settings.data.wallpaper.useSteamWallpapers = false;
+        }
+      }
+    }
+
+    NToggle {
+      label: I18n.tr("settings.wallpaper.video.use-steam.label")
+      description: I18n.tr("settings.wallpaper.video.use-steam.description")
+      checked: Settings.data.wallpaper.useSteamWallpapers
+      enabled: Settings.data.wallpaper.steamWallpaperIntegration && steamWallpaperAvailable && !Settings.data.wallpaper.useWallhaven
+      visible: Settings.data.wallpaper.steamWallpaperIntegration
+      onToggled: checked => {
+        Settings.data.wallpaper.useSteamWallpapers = checked;
+        if (checked) {
+          Settings.data.wallpaper.useWallhaven = false;
+        }
+      }
+    }
+
+    NText {
+      visible: Settings.data.wallpaper.useWallhaven && Settings.data.wallpaper.steamWallpaperIntegration
+      text: I18n.tr("settings.wallpaper.video.use-steam.disabled-by-wallhaven")
+      color: Color.mOnSurfaceVariant
+      wrapMode: Text.WordWrap
+      Layout.fillWidth: true
+    }
   }
 
   NDivider {
@@ -420,6 +741,18 @@ ColumnLayout {
       text: parent.label
       pointSize: Style.fontSizeS
       color: parent.selected ? Color.mOnPrimary : Color.mOnSurface
+    }
+  }
+
+  Process {
+    id: steamWallpaperCheck
+    command: ["bash", "-lc", `${Quickshell.shellDir}/Bin/check-steam-wallpaper.sh`]
+    running: false
+    stdout: StdioCollector {}
+    stderr: StdioCollector {}
+    onExited: function (exitCode) {
+      steamWallpaperCheckDone = true;
+      steamWallpaperAvailable = exitCode === 0;
     }
   }
 

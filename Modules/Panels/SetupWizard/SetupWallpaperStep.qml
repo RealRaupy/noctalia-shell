@@ -180,7 +180,22 @@ ColumnLayout {
                 id: thumbCached
                 anchors.fill: parent
                 anchors.margins: borderWidth
-                source: "file://" + modelData
+                cacheFolder: Settings.cacheDirImagesWallpapers
+                imagePath: WallpaperService.isVideoFile(modelData) ? WallpaperService.getPreviewPath(modelData) : modelData
+                Component.onCompleted: {
+                  if (WallpaperService.isVideoFile(modelData)) {
+                    WallpaperService.generateWallpaperPreview(modelData);
+                  }
+                }
+              }
+
+              Connections {
+                target: WallpaperService
+                function onWallpaperPreviewReady(originalPath, previewPath) {
+                  if (originalPath === modelData) {
+                    thumbCached.imagePath = previewPath;
+                  }
+                }
               }
             }
 
@@ -344,7 +359,12 @@ ColumnLayout {
       return;
     }
     if (typeof WallpaperService !== "undefined" && WallpaperService.getWallpapersList) {
-      var wallpapers = WallpaperService.getWallpapersList(Screen.name);
+      var wallpapers = WallpaperService.getWallpapersList(Screen.name) || [];
+      if (!Settings.data.wallpaper.videoPlaybackEnabled) {
+        wallpapers = wallpapers.filter(function (p) {
+          return !WallpaperService.isVideoFile(p);
+        });
+      }
       wallpapersList = wallpapers;
       updateFilteredWallpapers();
       if (wallpapersList.length > 0 && selectedWallpaper === "") {
@@ -356,7 +376,7 @@ ColumnLayout {
   }
 
   function readDirectoryImages(directoryPath) {
-    directoryScanner.command = ["find", directoryPath, "-type", "f", "\\(-iname", "*.jpg", "-o", "-iname", "*.jpeg", "-o", "-iname", "*.png", "-o", "-iname", "*.bmp", "-o", "-iname", "*.webp", "-o", "-iname", "*.svg", "\\)"];
+    directoryScanner.command = ["find", directoryPath, "-type", "f", "\\(-iname", "*.jpg", "-o", "-iname", "*.jpeg", "-o", "-iname", "*.png", "-o", "-iname", "*.bmp", "-o", "-iname", "*.webp", "-o", "-iname", "*.svg", "-o", "-iname", "*.mp4", "-o", "-iname", "*.webm", "-o", "-iname", "*.mov", "-o", "-iname", "*.mkv", "-o", "-iname", "*.gif", "\\)"];
     directoryScanner.running = true;
     return [];
   }
@@ -378,6 +398,13 @@ ColumnLayout {
       if (screenName === Screen.name) {
         Qt.callLater(refreshWallpapers);
       }
+    }
+  }
+
+  Connections {
+    target: Settings.data.wallpaper
+    function onVideoPlaybackEnabledChanged() {
+      Qt.callLater(refreshWallpapers);
     }
   }
 
@@ -416,7 +443,7 @@ ColumnLayout {
 
   Process {
     id: directoryScanner
-    command: ["find", "", "-type", "f", "\\(-iname", "*.jpg", "-o", "-iname", "*.jpeg", "-o", "-iname", "*.png", "-o", "-iname", "*.bmp", "-o", "-iname", "*.webp", "-o", "-iname", "*.svg", "\\)"]
+    command: ["find", "", "-type", "f", "\\(-iname", "*.jpg", "-o", "-iname", "*.jpeg", "-o", "-iname", "*.png", "-o", "-iname", "*.bmp", "-o", "-iname", "*.webp", "-o", "-iname", "*.svg", "-o", "-iname", "*.mp4", "-o", "-iname", "*.webm", "-o", "-iname", "*.mov", "-o", "-iname", "*.mkv", "-o", "-iname", "*.gif", "\\)"]
     running: false
     stdout: StdioCollector {}
     stderr: StdioCollector {}
@@ -429,6 +456,11 @@ ColumnLayout {
           if (line !== '') {
             images.push(line);
           }
+        }
+        if (!Settings.data.wallpaper.videoPlaybackEnabled) {
+          images = images.filter(function (p) {
+            return !WallpaperService.isVideoFile(p);
+          });
         }
         wallpapersList = images;
         updateFilteredWallpapers();

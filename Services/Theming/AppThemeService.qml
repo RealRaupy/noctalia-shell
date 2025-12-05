@@ -9,6 +9,8 @@ Singleton {
   id: root
 
   readonly property string colorsApplyScript: Quickshell.shellDir + '/Bin/colors-apply.sh'
+  property string pendingPreviewWallpaper: ""
+  property string pendingPreviewMode: ""
 
   Connections {
     target: WallpaperService
@@ -17,6 +19,14 @@ Singleton {
     function onWallpaperChanged(screenName, path) {
       if (screenName === Screen.name && Settings.data.colorSchemes.useWallpaperColors) {
         generateFromWallpaper();
+      }
+    }
+    function onWallpaperPreviewReady(originalPath, previewPath) {
+      if (pendingPreviewWallpaper !== "" && pendingPreviewWallpaper === originalPath) {
+        const mode = pendingPreviewMode || (Settings.data.colorSchemes.darkMode ? "dark" : "light");
+        pendingPreviewWallpaper = "";
+        pendingPreviewMode = "";
+        TemplateProcessor.processWallpaperColors(previewPath, mode);
       }
     }
   }
@@ -44,13 +54,23 @@ Singleton {
   }
 
   function generateFromWallpaper() {
-    const wp = WallpaperService.getWallpaper(Screen.name);
-    if (!wp) {
+    const wallpaperPath = WallpaperService.getWallpaper(Screen.name);
+    if (!wallpaperPath) {
       Logger.e("AppThemeService", "No wallpaper found");
       return;
     }
     const mode = Settings.data.colorSchemes.darkMode ? "dark" : "light";
-    TemplateProcessor.processWallpaperColors(wp, mode);
+    const entry = WallpaperService.getWallpaperEntry(wallpaperPath);
+    const targetPath = entry.type === "video" ? entry.previewPath : entry.path;
+
+    if (entry.type === "video" && (!targetPath || targetPath === entry.path)) {
+      pendingPreviewWallpaper = entry.path;
+      pendingPreviewMode = mode;
+      WallpaperService.generateWallpaperPreview(entry.path);
+      return;
+    }
+
+    TemplateProcessor.processWallpaperColors(targetPath, mode);
   }
 
   function generateFromPredefinedScheme(schemeData) {

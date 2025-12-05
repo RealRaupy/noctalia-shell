@@ -2103,6 +2103,62 @@
           "label": "Transition type"
         }
       },
+      "video": {
+        "audio-muted": {
+          "description": "Silence wallpaper audio everywhere.",
+          "label": "Mute wallpaper audio"
+        },
+        "audio-volume": {
+          "description": "Adjust the audio level for video wallpapers.",
+          "label": "Wallpaper volume"
+        },
+        "blacklist": {
+          "description": "Never pause or mute when these windows are present (matches app ID, class, title, or name).",
+          "label": "Pause blacklist",
+          "placeholder": "e.g., mpv"
+        },
+        "lockscreen": {
+          "mute": {
+            "description": "Mute wallpaper audio while the lock screen is visible.",
+            "label": "Mute on lock screen"
+          },
+          "playback": {
+            "description": "Continue rendering animated wallpapers on the lock screen; disable to pause them there.",
+            "label": "Play on lock screen"
+          }
+        },
+        "mute-instead": {
+          "description": "Mute wallpaper audio instead of pausing video when windows are open.",
+          "label": "Mute instead of pausing"
+        },
+        "pause-on-windows": {
+          "description": "Pause animated wallpapers while windows are present on the same workspace.",
+          "label": "Pause when windows are on this workspace"
+        },
+        "playback-enabled": {
+          "description": "Play video and GIF wallpapers instead of static previews.",
+          "label": "Enable animated wallpapers"
+        },
+        "remove-entry": "Remove entry",
+        "section": {
+          "label": "Video wallpaper"
+        },
+        "steam-integration": {
+          "description": "Enable Steam Workshop wallpapers from Wallpaper Engine.",
+          "error": "Steam Wallpaper Engine folders not found.",
+          "label": "Steam Wallpaper Engine integration"
+        },
+        "use-steam": {
+          "description": "Use Wallpaper Engine files as a wallpaper source.",
+          "disabled-by-wallhaven": "Wallhaven wallpapers are active; disable Wallhaven to use Steam Workshop content.",
+          "label": "Use Steam wallpapers"
+        },
+        "whitelist": {
+          "description": "Keep wallpaper audio playing for matching windows (app ID, class, title, or name).",
+          "label": "Audio mute whitelist",
+          "placeholder": "e.g., kitty"
+        }
+      },
       "settings": {
         "enable-management": {
           "description": "Manage wallpapers with Noctalia. Uncheck if you prefer using another application.",
@@ -2417,6 +2473,7 @@
       "source": {
         "label": "Source",
         "local": "Local",
+        "steam": "Steam Workshop",
         "wallhaven": "Wallhaven"
       },
       "title": "Wallpaper Selector",

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
+import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pam
@@ -110,16 +111,166 @@ Loader {
             property string currentLayout: KeyboardLayoutService.currentLayout
           }
 
-          Image {
-            id: lockBgImage
-            anchors.fill: parent
-            fillMode: Image.PreserveAspectCrop
-            source: screen ? WallpaperService.getWallpaper(screen.name) : ""
-            cache: true
-            smooth: true
-            mipmap: false
-            antialiasing: true
+          property string wallpaperPath: screen ? WallpaperService.getWallpaper(screen.name) : ""
+          property bool wallpaperIsVideo: WallpaperService.isVideoFile(wallpaperPath)
+          property string wallpaperDisplay: ""
+
+          function updateWallpaperFromService() {
+            if (screen) {
+              wallpaperPath = WallpaperService.getWallpaper(screen.name);
+            }
+            wallpaperIsVideo = WallpaperService.isVideoFile(wallpaperPath);
+            updateWallpaperDisplay();
           }
+
+          function updateWallpaperDisplay() {
+            if (!wallpaperPath || wallpaperPath === "") {
+              wallpaperDisplay = "";
+              if (lockBackgroundLoader.item && lockBackgroundLoader.item.setSource) {
+                lockBackgroundLoader.item.setSource("");
+              }
+              return;
+            }
+
+            var playbackEnabled = Settings.data.wallpaper.videoPlaybackEnabled && Settings.data.wallpaper.lockScreenVideoEnabled && wallpaperIsVideo;
+            if (wallpaperIsVideo) {
+              WallpaperService.generateWallpaperPreview(wallpaperPath);
+            }
+
+            lockBackgroundLoader.sourceComponent = playbackEnabled ? lockVideoComponent : lockImageComponent;
+            wallpaperDisplay = playbackEnabled ? wallpaperPath : WallpaperService.getPreviewPath(wallpaperPath);
+
+            if (lockBackgroundLoader.item && lockBackgroundLoader.item.setSource) {
+              lockBackgroundLoader.item.setSource(wallpaperDisplay);
+            }
+          }
+
+          Loader {
+            id: lockBackgroundLoader
+            anchors.fill: parent
+          }
+
+          Component {
+            id: lockImageComponent
+            Image {
+              anchors.fill: parent
+              fillMode: Image.PreserveAspectCrop
+              cache: true
+              smooth: true
+              mipmap: false
+              antialiasing: true
+              function setSource(src) {
+                source = src;
+              }
+            }
+          }
+
+          Component {
+            id: lockVideoComponent
+            Item {
+              anchors.fill: parent
+              property string source: ""
+              property bool playbackAllowed: Settings.data.wallpaper.videoPlaybackEnabled && Settings.data.wallpaper.lockScreenVideoEnabled
+
+              MediaPlayer {
+                id: lockVideoPlayer
+                source: source
+                loops: MediaPlayer.Infinite
+                videoOutput: lockVideoOutput
+                audioOutput: lockVideoAudio
+              }
+
+              VideoOutput {
+                id: lockVideoOutput
+                anchors.fill: parent
+                fillMode: VideoOutput.PreserveAspectCrop
+              }
+
+              AudioOutput {
+                id: lockVideoAudio
+                muted: true
+                volume: 0
+              }
+
+              function setSource(src) {
+                source = src;
+                lockVideoPlayer.source = src;
+                updatePlaybackState();
+              }
+
+              function updatePlaybackState() {
+                if (playbackAllowed && root.active) {
+                  lockVideoPlayer.play();
+                } else {
+                  lockVideoPlayer.pause();
+                }
+
+                var muted = Settings.data.wallpaper.videoAudioMuted || Settings.data.wallpaper.lockScreenVideoMuted;
+                lockVideoAudio.muted = muted;
+                lockVideoAudio.volume = muted ? 0 : Settings.data.wallpaper.videoAudioVolume;
+              }
+
+              Connections {
+                target: Settings.data.wallpaper
+                function onVideoPlaybackEnabledChanged() {
+                  playbackAllowed = Settings.data.wallpaper.videoPlaybackEnabled && Settings.data.wallpaper.lockScreenVideoEnabled;
+                  updatePlaybackState();
+                }
+                function onLockScreenVideoEnabledChanged() {
+                  playbackAllowed = Settings.data.wallpaper.videoPlaybackEnabled && Settings.data.wallpaper.lockScreenVideoEnabled;
+                  updatePlaybackState();
+                }
+                function onLockScreenVideoMutedChanged() {
+                  updatePlaybackState();
+                }
+                function onVideoAudioMutedChanged() {
+                  updatePlaybackState();
+                }
+                function onVideoAudioVolumeChanged() {
+                  updatePlaybackState();
+                }
+              }
+
+              Connections {
+                target: root
+                function onActiveChanged() {
+                  updatePlaybackState();
+                }
+              }
+            }
+          }
+
+          Connections {
+            target: WallpaperService
+            function onWallpaperChanged(screenName, path) {
+              if (screen && screen.name === screenName) {
+                wallpaperPath = path;
+                wallpaperIsVideo = WallpaperService.isVideoFile(wallpaperPath);
+                updateWallpaperDisplay();
+              }
+            }
+            function onWallpaperPreviewReady(originalPath, previewPath) {
+              if (originalPath === wallpaperPath && (!Settings.data.wallpaper.videoPlaybackEnabled || !Settings.data.wallpaper.lockScreenVideoEnabled)) {
+                wallpaperDisplay = previewPath;
+                if (lockBackgroundLoader.item && lockBackgroundLoader.item.setSource) {
+                  lockBackgroundLoader.item.setSource("");
+                  lockBackgroundLoader.item.setSource(previewPath);
+                }
+              }
+            }
+          }
+
+          Connections {
+            target: Settings.data.wallpaper
+            function onVideoPlaybackEnabledChanged() {
+              updateWallpaperDisplay();
+            }
+            function onLockScreenVideoEnabledChanged() {
+              updateWallpaperDisplay();
+            }
+          }
+
+          Component.onCompleted: updateWallpaperFromService()
 
           Rectangle {
             anchors.fill: parent

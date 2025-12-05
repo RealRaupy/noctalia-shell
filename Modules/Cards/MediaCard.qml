@@ -15,17 +15,34 @@ NBox {
   // Track whether we have an active media player
   readonly property bool hasActivePlayer: MediaService.currentPlayer && MediaService.canPlay
 
-  property string wallpaper: WallpaperService.getWallpaper(screen.name)
+  property string wallpaperPath: WallpaperService.getWallpaper(screen.name)
+  property string wallpaperDisplay: ""
+
+  function updateWallpaperDisplay() {
+    wallpaperDisplay = WallpaperService.isVideoFile(wallpaperPath) ? WallpaperService.getPreviewPath(wallpaperPath) : wallpaperPath;
+    if (WallpaperService.isVideoFile(wallpaperPath)) {
+      WallpaperService.generateWallpaperPreview(wallpaperPath);
+    }
+  }
 
   // External state management
   Connections {
     target: WallpaperService
     function onWallpaperChanged(screenName, path) {
       if (screenName === screen.name) {
-        wallpaper = path;
+        wallpaperPath = path;
+        updateWallpaperDisplay();
+      }
+    }
+    function onWallpaperPreviewReady(originalPath, previewPath) {
+      if (originalPath === wallpaperPath) {
+        wallpaperDisplay = "";
+        wallpaperDisplay = previewPath;
       }
     }
   }
+
+  Component.onCompleted: updateWallpaperDisplay()
 
   // Wrapper - rounded rect clipper
   Item {
@@ -51,7 +68,7 @@ NBox {
       id: bgImage
       readonly property int dim: Math.round(256 * Style.uiScaleRatio)
       anchors.fill: parent
-      source: MediaService.trackArtUrl || wallpaper
+      source: MediaService.trackArtUrl || wallpaperDisplay
       sourceSize: Qt.size(dim, dim)
       fillMode: Image.PreserveAspectCrop
       layer.enabled: true
