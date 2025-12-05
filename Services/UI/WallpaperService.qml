@@ -276,8 +276,8 @@ Singleton {
 
     previewCache[path] = previewCache[path] || true;
 
-    // Throttle concurrent generations to keep UI responsive
-    if (Object.keys(previewProcesses).length >= 2) {
+    // Throttle concurrent generations to keep UI responsive (single ffmpeg at a time)
+    if (Object.keys(previewProcesses).length >= 1) {
       if (previewQueue.indexOf(path) === -1) {
         previewQueue.push(path);
       }

@@ -17,7 +17,7 @@ import qs.Widgets
   preferredHeight: 600 * Style.uiScaleRatio
   preferredWidthRatio: 0.5
   preferredHeightRatio: 0.45
-  property bool previewsPrimed: false
+  property bool previewsPrimed: true
   property bool previewPrimingRunning: false
   property bool steamWallpaperAvailable: false
   property bool steamWallpaperCheckDone: false
@@ -746,32 +746,34 @@ import qs.Widgets
           }
         }
 
-        delegate: ColumnLayout {
-          id: wallpaperItem
+      delegate: ColumnLayout {
+        id: wallpaperItem
 
-          property string wallpaperPath: modelData
-          property bool isSelected: (wallpaperPath === currentWallpaper)
-          property string filename: wallpaperPath.split('/').pop()
-          property bool isVideo: WallpaperService.isVideoFile(wallpaperPath)
-          property string displaySource: isVideo ? WallpaperService.getPreviewPath(wallpaperPath) : wallpaperPath
+        property string wallpaperPath: modelData
+        property bool isSelected: (wallpaperPath === currentWallpaper)
+        property string filename: wallpaperPath.split('/').pop()
+        property bool isVideo: WallpaperService.isVideoFile(wallpaperPath)
+        property string displaySource: isVideo ? WallpaperService.getPreviewPath(wallpaperPath) : wallpaperPath
+        property bool previewRequested: false
 
-          width: wallpaperGridView.itemSize
-          spacing: Style.marginXS
+        width: wallpaperGridView.itemSize
+        spacing: Style.marginXS
 
-          Component.onCompleted: {
-            if (isVideo) {
-              WallpaperService.generateWallpaperPreview(wallpaperPath);
+        Connections {
+          target: WallpaperService
+          function onWallpaperPreviewReady(originalPath, previewPath) {
+            if (originalPath === wallpaperPath) {
+              displaySource = previewPath;
             }
           }
+        }
 
-          Connections {
-            target: WallpaperService
-            function onWallpaperPreviewReady(originalPath, previewPath) {
-              if (originalPath === wallpaperPath) {
-                displaySource = previewPath;
-              }
-            }
+        onVisibleChanged: {
+          if (visible && isVideo && !previewRequested) {
+            previewRequested = true;
+            WallpaperService.generateWallpaperPreview(wallpaperPath);
           }
+        }
 
           Rectangle {
             id: imageContainer
