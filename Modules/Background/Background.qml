@@ -45,6 +45,13 @@ Variants {
       property string nextWallpaperType: "image"
       property string currentWallpaperPath: ""
       property bool useFallbackTransition: false
+      property real shaderProgress: useFallbackTransition ? fallbackTransitionProgress : transitionProgress
+      readonly property var shaderSource1: useFallbackTransition ? fallbackBaseSource : currentWallpaper
+      readonly property var shaderSource2: useFallbackTransition ? fallbackOverlaySource : nextWallpaper
+      readonly property real shaderImageWidth1: getShaderSourceWidth(shaderSource1)
+      readonly property real shaderImageHeight1: getShaderSourceHeight(shaderSource1)
+      readonly property real shaderImageWidth2: getShaderSourceWidth(shaderSource2)
+      readonly property real shaderImageHeight2: getShaderSourceHeight(shaderSource2)
       property bool lockScreenActive: PanelService.lockScreen ? PanelService.lockScreen.active : false
       property real fallbackTransitionProgress: 0
       property bool wallpaperSuspended: false
@@ -251,7 +258,7 @@ Variants {
       Loader {
         id: shaderLoader
         anchors.fill: parent
-        active: !useFallbackTransition
+        active: true
 
         sourceComponent: {
           switch (transitionType) {
@@ -275,17 +282,17 @@ Variants {
         ShaderEffect {
           anchors.fill: parent
 
-          property variant source1: currentWallpaper
-          property variant source2: nextWallpaper
-          property real progress: root.transitionProgress
+          property variant source1: root.shaderSource1
+          property variant source2: root.shaderSource2
+          property real progress: root.shaderProgress
 
           // Fill mode properties
           property real fillMode: root.fillMode
           property vector4d fillColor: root.fillColor
-          property real imageWidth1: source1.sourceSize.width
-          property real imageHeight1: source1.sourceSize.height
-          property real imageWidth2: source2.sourceSize.width
-          property real imageHeight2: source2.sourceSize.height
+          property real imageWidth1: root.shaderImageWidth1
+          property real imageHeight1: root.shaderImageHeight1
+          property real imageWidth2: root.shaderImageWidth2
+          property real imageHeight2: root.shaderImageHeight2
           property real screenWidth: width
           property real screenHeight: height
 
@@ -299,19 +306,19 @@ Variants {
         ShaderEffect {
           anchors.fill: parent
 
-          property variant source1: currentWallpaper
-          property variant source2: nextWallpaper
-          property real progress: root.transitionProgress
+          property variant source1: root.shaderSource1
+          property variant source2: root.shaderSource2
+          property real progress: root.shaderProgress
           property real smoothness: root.edgeSmoothness
           property real direction: root.wipeDirection
 
           // Fill mode properties
           property real fillMode: root.fillMode
           property vector4d fillColor: root.fillColor
-          property real imageWidth1: source1.sourceSize.width
-          property real imageHeight1: source1.sourceSize.height
-          property real imageWidth2: source2.sourceSize.width
-          property real imageHeight2: source2.sourceSize.height
+          property real imageWidth1: root.shaderImageWidth1
+          property real imageHeight1: root.shaderImageHeight1
+          property real imageWidth2: root.shaderImageWidth2
+          property real imageHeight2: root.shaderImageHeight2
           property real screenWidth: width
           property real screenHeight: height
 
@@ -325,9 +332,9 @@ Variants {
         ShaderEffect {
           anchors.fill: parent
 
-          property variant source1: currentWallpaper
-          property variant source2: nextWallpaper
-          property real progress: root.transitionProgress
+          property variant source1: root.shaderSource1
+          property variant source2: root.shaderSource2
+          property real progress: root.shaderProgress
           property real smoothness: root.edgeSmoothness
           property real aspectRatio: root.width / root.height
           property real centerX: root.discCenterX
@@ -336,10 +343,10 @@ Variants {
           // Fill mode properties
           property real fillMode: root.fillMode
           property vector4d fillColor: root.fillColor
-          property real imageWidth1: source1.sourceSize.width
-          property real imageHeight1: source1.sourceSize.height
-          property real imageWidth2: source2.sourceSize.width
-          property real imageHeight2: source2.sourceSize.height
+          property real imageWidth1: root.shaderImageWidth1
+          property real imageHeight1: root.shaderImageHeight1
+          property real imageWidth2: root.shaderImageWidth2
+          property real imageHeight2: root.shaderImageHeight2
           property real screenWidth: width
           property real screenHeight: height
 
@@ -353,9 +360,9 @@ Variants {
         ShaderEffect {
           anchors.fill: parent
 
-          property variant source1: currentWallpaper
-          property variant source2: nextWallpaper
-          property real progress: root.transitionProgress
+          property variant source1: root.shaderSource1
+          property variant source2: root.shaderSource2
+          property real progress: root.shaderProgress
           property real smoothness: root.edgeSmoothness
           property real aspectRatio: root.width / root.height
           property real stripeCount: root.stripesCount
@@ -364,10 +371,10 @@ Variants {
           // Fill mode properties
           property real fillMode: root.fillMode
           property vector4d fillColor: root.fillColor
-          property real imageWidth1: source1.sourceSize.width
-          property real imageHeight1: source1.sourceSize.height
-          property real imageWidth2: source2.sourceSize.width
-          property real imageHeight2: source2.sourceSize.height
+          property real imageWidth1: root.shaderImageWidth1
+          property real imageHeight1: root.shaderImageHeight1
+          property real imageWidth2: root.shaderImageWidth2
+          property real imageHeight2: root.shaderImageHeight2
           property real screenWidth: width
           property real screenHeight: height
 
@@ -392,6 +399,26 @@ Variants {
           active: useFallbackTransition
           opacity: 0
         }
+      }
+
+      ShaderEffectSource {
+        id: fallbackBaseSource
+        anchors.fill: parent
+        sourceItem: currentFallback
+        live: true
+        recursive: true
+        hideSource: true
+        visible: false
+      }
+
+      ShaderEffectSource {
+        id: fallbackOverlaySource
+        anchors.fill: parent
+        sourceItem: nextFallback
+        live: true
+        recursive: true
+        hideSource: true
+        visible: false
       }
 
       Component {
@@ -419,10 +446,29 @@ Variants {
 
           property string source: ""
           property real visualOpacity: opacity
+          property real targetVolume: 0.0
           property bool suspended: false
           property bool muteForWindows: false
           property string screenName: modelData ? modelData.name : ""
           property bool primaryAudio: Settings.data.wallpaper.videoAudioMode !== "primary" ? true : (screenName === Screen.name)
+          Behavior on targetVolume {
+            NumberAnimation {
+              duration: 220
+              easing.type: Easing.InOutCubic
+            }
+          }
+
+          Timer {
+            id: fadeOutTimer
+            interval: 220
+            repeat: false
+            onTriggered: {
+              if (fallbackVideo.targetVolume === 0) {
+                mediaPlayer.pause();
+                WallpaperService.clearActiveAudioPath(mediaPlayer.source);
+              }
+            }
+          }
 
           MediaPlayer {
             id: mediaPlayer
@@ -440,23 +486,34 @@ Variants {
 
           AudioOutput {
             id: wallpaperAudio
-            muted: true
-            volume: 0
+            muted: false
+            volume: fallbackVideo.targetVolume
           }
 
           function updatePlaybackState() {
-            if (!Settings.data.wallpaper.videoPlaybackEnabled || suspended) {
-              mediaPlayer.pause();
-            } else if (mediaPlayer.source) {
+            var allowPlayback = Settings.data.wallpaper.videoPlaybackEnabled && !suspended && source;
+            var muted = muteForWindows || suspended || WallpaperService.computeAudioMuted(fallbackVideo.source);
+            var desired = (!muted && allowPlayback) ? Settings.data.wallpaper.videoAudioVolume * visualOpacity : 0;
+
+            if (desired > 0) {
+              fadeOutTimer.stop();
               mediaPlayer.play();
+              wallpaperAudio.muted = false;
+            } else {
+              if (!allowPlayback) {
+                fadeOutTimer.restart();
+              } else {
+                fadeOutTimer.stop();
+                mediaPlayer.play();
+                wallpaperAudio.muted = true;
+              }
             }
 
-            var muted = muteForWindows || suspended || WallpaperService.computeAudioMuted(fallbackVideo.source);
-            wallpaperAudio.muted = muted;
-            wallpaperAudio.volume = muted ? 0 : Settings.data.wallpaper.videoAudioVolume * visualOpacity;
+            fallbackVideo.targetVolume = desired;
           }
 
           function setSource(src) {
+            fallbackVideo.targetVolume = 0.0;
             source = src;
             mediaPlayer.source = src;
             if (Settings.data.wallpaper.videoAudioMode === "primary" && primaryAudio) {
@@ -588,6 +645,40 @@ Variants {
           return WallpaperService.getPreviewPath(path);
         }
         return path;
+      }
+
+      function getShaderSourceWidth(source) {
+        if (!source) {
+          return width;
+        }
+        var item = source.sourceItem !== undefined ? source.sourceItem : source;
+        if (item && item.sourceSize && item.sourceSize.width > 0) {
+          return item.sourceSize.width;
+        }
+        if (item && item.implicitWidth > 0) {
+          return item.implicitWidth;
+        }
+        if (item && item.width > 0) {
+          return item.width;
+        }
+        return width;
+      }
+
+      function getShaderSourceHeight(source) {
+        if (!source) {
+          return height;
+        }
+        var item = source.sourceItem !== undefined ? source.sourceItem : source;
+        if (item && item.sourceSize && item.sourceSize.height > 0) {
+          return item.sourceSize.height;
+        }
+        if (item && item.implicitHeight > 0) {
+          return item.implicitHeight;
+        }
+        if (item && item.height > 0) {
+          return item.height;
+        }
+        return height;
       }
 
       function getFallbackComponent(type) {
@@ -734,6 +825,12 @@ Variants {
         }
       }
 
+      function fadeOutLoaderAudio(loader) {
+        if (loader && loader.item && loader.item.hasOwnProperty("targetVolume")) {
+          loader.item.targetVolume = 0.0;
+        }
+      }
+
       // ------------------------------------------------------
       function setWallpaperInitial() {
         // On startup, defer assigning wallpaper until the service cache is ready, retries every tick
@@ -847,6 +944,7 @@ Variants {
           if (currentFallback.item.visualOpacity !== undefined) {
             currentFallback.item.visualOpacity = 1;
           }
+          fadeOutLoaderAudio(currentFallback);
         }
 
         nextFallback.sourceComponent = getFallbackComponent(nextWallpaperType);
