@@ -136,13 +136,12 @@ Loader {
               return;
             }
 
-            var playbackEnabled = Settings.data.wallpaper.videoPlaybackEnabled && Settings.data.wallpaper.lockScreenVideoEnabled && wallpaperIsVideo;
             if (wallpaperIsVideo) {
               WallpaperService.generateWallpaperPreview(wallpaperPath);
             }
 
-            lockBackgroundLoader.sourceComponent = playbackEnabled ? lockVideoComponent : lockImageComponent;
-            wallpaperDisplay = playbackEnabled ? wallpaperPath : WallpaperService.getPreviewForDisplay(wallpaperPath);
+            lockBackgroundLoader.sourceComponent = wallpaperIsVideo ? lockVideoComponent : lockImageComponent;
+            wallpaperDisplay = (!Settings.data.wallpaper.videoPlaybackEnabled && wallpaperIsVideo) ? WallpaperService.getPreviewPath(wallpaperPath) : wallpaperPath;
 
             if (lockBackgroundLoader.item && lockBackgroundLoader.item.setSource) {
               lockBackgroundLoader.item.setSource(wallpaperDisplay);
@@ -153,6 +152,8 @@ Loader {
             id: lockBackgroundLoader
             anchors.fill: parent
           }
+
+          onScreenChanged: updateWallpaperFromService()
 
           Component {
             id: lockImageComponent
@@ -182,6 +183,7 @@ Loader {
                 loops: MediaPlayer.Infinite
                 videoOutput: lockVideoOutput
                 audioOutput: lockVideoAudio
+                autoPlay: true
               }
 
               VideoOutput {
@@ -198,18 +200,25 @@ Loader {
 
               function setSource(src) {
                 source = src;
+                lockVideoAudio.muted = true;
                 lockVideoPlayer.source = src;
-                updatePlaybackState();
+                lockVideoPlayer.play();
+                Qt.callLater(updatePlaybackState);
               }
 
               function updatePlaybackState() {
-                if (playbackAllowed && root.active) {
+                var shouldPlay = playbackAllowed && root.active;
+                if (shouldPlay) {
                   lockVideoPlayer.play();
                 } else {
+                  // Ensure a frame is visible even when paused
+                  if (lockVideoPlayer.playbackState === MediaPlayer.StoppedState) {
+                    lockVideoPlayer.play();
+                  }
                   lockVideoPlayer.pause();
                 }
 
-                var muted = Settings.data.wallpaper.videoAudioMuted || Settings.data.wallpaper.lockScreenVideoMuted;
+                var muted = Settings.data.wallpaper.videoAudioMuted || Settings.data.wallpaper.lockScreenVideoMuted || !shouldPlay;
                 lockVideoAudio.muted = muted;
                 lockVideoAudio.volume = muted ? 0 : Settings.data.wallpaper.videoAudioVolume;
               }
@@ -254,12 +263,16 @@ Loader {
               }
             }
             function onWallpaperPreviewReady(originalPath, previewPath) {
-              if (originalPath === wallpaperPath && (!Settings.data.wallpaper.videoPlaybackEnabled || !Settings.data.wallpaper.lockScreenVideoEnabled)) {
-                wallpaperDisplay = previewPath;
-                if (lockBackgroundLoader.item && lockBackgroundLoader.item.setSource) {
-                  lockBackgroundLoader.item.setSource("");
-                  lockBackgroundLoader.item.setSource(previewPath);
-                }
+              if (originalPath !== wallpaperPath) {
+                return;
+              }
+              if (Settings.data.wallpaper.videoPlaybackEnabled) {
+                return;
+              }
+              wallpaperDisplay = previewPath;
+              if (lockBackgroundLoader.item && lockBackgroundLoader.item.setSource) {
+                lockBackgroundLoader.item.setSource("");
+                lockBackgroundLoader.item.setSource(previewPath);
               }
             }
           }
@@ -271,6 +284,15 @@ Loader {
             }
             function onLockScreenVideoEnabledChanged() {
               updateWallpaperDisplay();
+            }
+          }
+
+          Connections {
+            target: root
+            function onActiveChanged() {
+              if (root.active) {
+                updateWallpaperFromService();
+              }
             }
           }
 

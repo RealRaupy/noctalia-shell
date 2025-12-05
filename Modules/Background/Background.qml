@@ -45,6 +45,7 @@ Variants {
       property string nextWallpaperType: "image"
       property string currentWallpaperPath: ""
       property bool useFallbackTransition: false
+      property bool lockScreenActive: PanelService.lockScreen ? PanelService.lockScreen.active : false
       property real fallbackTransitionProgress: 0
       property bool wallpaperSuspended: false
       property bool wallpaperMuteForWindows: false
@@ -88,6 +89,9 @@ Variants {
           imageFillMode = getImageFillMode();
           videoFillMode = getVideoFillMode();
         }
+        function onOverviewEnabledChanged() {
+          updateWallpaperSuspension();
+        }
         function onPauseVideoOnWindowsChanged() {
           updateWallpaperSuspension();
         }
@@ -105,6 +109,15 @@ Variants {
             futureWallpaper = currentWallpaperPath;
             setWallpaperImmediate(getDisplaySource(currentWallpaperPath));
           }
+        }
+      }
+
+      Connections {
+        target: PanelService.lockScreen
+        ignoreUnknownSignals: true
+        function onActiveChanged() {
+          lockScreenActive = PanelService.lockScreen && PanelService.lockScreen.active;
+          updateWallpaperSuspension();
         }
       }
 
@@ -632,8 +645,15 @@ Variants {
 
       function updateWallpaperSuspension() {
         if (!Settings.data.wallpaper.pauseVideoOnWindows) {
-          wallpaperSuspended = false;
-          wallpaperMuteForWindows = false;
+          wallpaperSuspended = lockScreenActive;
+          wallpaperMuteForWindows = lockScreenActive;
+          applySuspensionState();
+          return;
+        }
+
+        if (lockScreenActive) {
+          wallpaperSuspended = true;
+          wallpaperMuteForWindows = true;
           applySuspensionState();
           return;
         }
