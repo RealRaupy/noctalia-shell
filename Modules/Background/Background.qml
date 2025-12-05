@@ -45,7 +45,10 @@ Variants {
       property string nextWallpaperType: "image"
       property string currentWallpaperPath: ""
       property bool useFallbackTransition: false
+      property bool fallbackTransitionActive: false
       property real shaderProgress: useFallbackTransition ? fallbackTransitionProgress : transitionProgress
+      property var fallbackBaseLoader: currentFallback
+      property var fallbackOverlayLoader: nextFallback
       readonly property var shaderSource1: useFallbackTransition ? fallbackBaseSource : currentWallpaper
       readonly property var shaderSource2: useFallbackTransition ? fallbackOverlaySource : nextWallpaper
       readonly property real shaderImageWidth1: getShaderSourceWidth(shaderSource1)
@@ -76,15 +79,15 @@ Variants {
 
       onFallbackTransitionProgressChanged: {
         if (currentFallback.item) {
-          currentFallback.item.opacity = useFallbackTransition ? 1 - fallbackTransitionProgress : 1;
+          currentFallback.item.opacity = 1;
           if (currentFallback.item.visualOpacity !== undefined) {
-            currentFallback.item.visualOpacity = currentFallback.item.opacity;
+            currentFallback.item.visualOpacity = 1;
           }
         }
         if (nextFallback.item) {
-          nextFallback.item.opacity = fallbackTransitionProgress;
+          nextFallback.item.opacity = 1;
           if (nextFallback.item.visualOpacity !== undefined) {
-            nextFallback.item.visualOpacity = nextFallback.item.opacity;
+            nextFallback.item.visualOpacity = 1;
           }
         }
       }
@@ -385,7 +388,7 @@ Variants {
       Item {
         id: fallbackLayer
         anchors.fill: parent
-        visible: useFallbackTransition
+        visible: false
 
         Loader {
           id: currentFallback
@@ -404,20 +407,20 @@ Variants {
       ShaderEffectSource {
         id: fallbackBaseSource
         anchors.fill: parent
-        sourceItem: currentFallback
+        sourceItem: fallbackBaseLoader
         live: true
         recursive: true
-        hideSource: true
+        hideSource: fallbackTransitionActive
         visible: false
       }
 
       ShaderEffectSource {
         id: fallbackOverlaySource
         anchors.fill: parent
-        sourceItem: nextFallback
+        sourceItem: fallbackOverlayLoader
         live: true
         recursive: true
-        hideSource: true
+        hideSource: fallbackTransitionActive
         visible: false
       }
 
@@ -443,6 +446,7 @@ Variants {
         Item {
           id: fallbackVideo
           anchors.fill: parent
+          property alias player: mediaPlayer
 
           property string source: ""
           property real visualOpacity: opacity
@@ -495,18 +499,13 @@ Variants {
             var muted = muteForWindows || suspended || WallpaperService.computeAudioMuted(fallbackVideo.source);
             var desired = (!muted && allowPlayback) ? Settings.data.wallpaper.videoAudioVolume * visualOpacity : 0;
 
-            if (desired > 0) {
+            if (allowPlayback) {
               fadeOutTimer.stop();
               mediaPlayer.play();
-              wallpaperAudio.muted = false;
+              wallpaperAudio.muted = muted;
             } else {
-              if (!allowPlayback) {
-                fadeOutTimer.restart();
-              } else {
-                fadeOutTimer.stop();
-                mediaPlayer.play();
-                wallpaperAudio.muted = true;
-              }
+              wallpaperAudio.muted = true;
+              fadeOutTimer.restart();
             }
 
             fallbackVideo.targetVolume = desired;
@@ -588,6 +587,9 @@ Variants {
         duration: Settings.data.wallpaper.transitionDuration
         easing.type: Easing.InOutCubic
         onFinished: finalizeFallbackTransition()
+        onStarted: {
+          fallbackTransitionActive = true;
+        }
       }
 
       // ------------------------------------------------------
@@ -807,20 +809,15 @@ Variants {
       }
 
       function applySuspensionState() {
-        if (currentFallback.item) {
-          if ("suspended" in currentFallback.item) {
-            currentFallback.item.suspended = wallpaperSuspended;
+        var loaders = [fallbackBaseLoader, fallbackOverlayLoader];
+        for (var i = 0; i < loaders.length; i++) {
+          var item = loaders[i] && loaders[i].item;
+          if (!item) continue;
+          if ("suspended" in item) {
+            item.suspended = wallpaperSuspended;
           }
-          if ("muteForWindows" in currentFallback.item) {
-            currentFallback.item.muteForWindows = wallpaperMuteForWindows;
-          }
-        }
-        if (nextFallback.item) {
-          if ("suspended" in nextFallback.item) {
-            nextFallback.item.suspended = wallpaperSuspended;
-          }
-          if ("muteForWindows" in nextFallback.item) {
-            nextFallback.item.muteForWindows = wallpaperMuteForWindows;
+          if ("muteForWindows" in item) {
+            item.muteForWindows = wallpaperMuteForWindows;
           }
         }
       }
@@ -828,6 +825,19 @@ Variants {
       function fadeOutLoaderAudio(loader) {
         if (loader && loader.item && loader.item.hasOwnProperty("targetVolume")) {
           loader.item.targetVolume = 0.0;
+        }
+      }
+
+      function stopLoaderPlayback(loader) {
+        if (loader && loader.item) {
+          if (loader.item.hasOwnProperty("targetVolume")) {
+            loader.item.targetVolume = 0.0;
+          }
+          var player = loader.item.player || loader.item.mediaPlayer;
+          if (player) {
+            player.pause();
+            WallpaperService.clearActiveAudioPath(player.source);
+          }
         }
       }
 
@@ -864,6 +874,8 @@ Variants {
         updateWallpaperSuspension();
 
         if (useFallbackTransition) {
+          stopLoaderPlayback(fallbackBaseLoader);
+          stopLoaderPlayback(fallbackOverlayLoader);
           currentFallback.sourceComponent = getFallbackComponent(currentWallpaperType);
           if (currentFallback.item && currentFallback.item.setSource) {
             currentFallback.item.setSource(source);
@@ -905,54 +917,56 @@ Variants {
         }
 
         if (transitioning) {
-          // We are interrupting a transition - handle cleanup properly
-          transitionAnimation.stop();
-          transitionProgress = 0;
+        // We are interrupting a transition - handle cleanup properly
+        transitionAnimation.stop();
+        transitionProgress = 0;
 
-          // Assign nextWallpaper to currentWallpaper BEFORE clearing to prevent flicker
-          const newCurrentSource = nextWallpaper.source;
-          currentWallpaper.source = newCurrentSource;
+        // Assign nextWallpaper to currentWallpaper BEFORE clearing to prevent flicker
+        const newCurrentSource = nextWallpaper.source;
+        currentWallpaper.source = newCurrentSource;
 
-          // Now clear nextWallpaper after current has the new source
-          Qt.callLater(() => {
-                         nextWallpaper.source = "";
+        // Now clear nextWallpaper after current has the new source
+        Qt.callLater(() => {
+                       nextWallpaper.source = "";
 
-                         // Now set the next wallpaper after a brief delay
-                         Qt.callLater(() => {
-                                        nextWallpaper.source = source;
-                                        currentWallpaper.asynchronous = false;
-                                        transitionAnimation.start();
-                                      });
-                       });
-          return;
-        }
-
-        nextWallpaper.source = source;
-        currentWallpaper.asynchronous = false;
-        transitionAnimation.start();
+                       // Now set the next wallpaper after a brief delay
+                       Qt.callLater(() => {
+                                      nextWallpaper.source = source;
+                                      currentWallpaper.asynchronous = false;
+                                      transitionAnimation.start();
+                                    });
+                     });
+        return;
       }
 
-      function startFallbackTransition(source) {
+      nextWallpaper.source = source;
+      currentWallpaper.asynchronous = false;
+      transitionAnimation.start();
+    }
+
+    function startFallbackTransition(source) {
         transitionAnimation.stop();
         fallbackTransitionAnimation.stop();
         fallbackTransitionProgress = 0.0;
 
-        currentFallback.sourceComponent = getFallbackComponent(currentWallpaperType);
-        if (currentFallback.item && currentWallpaperPath) {
-          currentFallback.item.setSource(getDisplaySource(currentWallpaperPath));
-          currentFallback.item.opacity = 1;
-          if (currentFallback.item.visualOpacity !== undefined) {
-            currentFallback.item.visualOpacity = 1;
+        fallbackBaseLoader.sourceComponent = getFallbackComponent(currentWallpaperType);
+        if (fallbackBaseLoader.item && currentWallpaperPath) {
+          fallbackBaseLoader.item.setSource(getDisplaySource(currentWallpaperPath));
+          fallbackBaseLoader.item.opacity = 1;
+          if (fallbackBaseLoader.item.visualOpacity !== undefined) {
+            fallbackBaseLoader.item.visualOpacity = 1;
           }
-          fadeOutLoaderAudio(currentFallback);
+          fadeOutLoaderAudio(fallbackBaseLoader);
         }
+        stopLoaderPlayback(fallbackOverlayLoader);
 
-        nextFallback.sourceComponent = getFallbackComponent(nextWallpaperType);
-        nextFallback.active = true;
+        fallbackOverlayLoader.sourceComponent = getFallbackComponent(nextWallpaperType);
+        fallbackOverlayLoader.active = true;
+        fallbackOverlayLoader.opacity = 0;
 
         Qt.callLater(() => {
-                       if (nextFallback.item && nextFallback.item.setSource) {
-                         nextFallback.item.setSource(source);
+                       if (fallbackOverlayLoader.item && fallbackOverlayLoader.item.setSource) {
+                         fallbackOverlayLoader.item.setSource(source);
                          applySuspensionState();
                          fallbackTransitionAnimation.start();
                        }
@@ -961,24 +975,25 @@ Variants {
 
       function finalizeFallbackTransition() {
         fallbackTransitionProgress = 0.0;
+        fallbackTransitionActive = false;
         currentWallpaperPath = futureWallpaper;
         currentWallpaperType = nextWallpaperType;
         nextWallpaperType = currentWallpaperType;
         useFallbackTransition = (currentWallpaperType === "video");
 
-        currentFallback.sourceComponent = getFallbackComponent(currentWallpaperType);
-        if (currentFallback.item) {
-          var newSource = nextFallback.item && nextFallback.item.source ? nextFallback.item.source : getDisplaySource(currentWallpaperPath);
-          if (currentFallback.item.setSource) {
-            currentFallback.item.setSource(newSource);
-          }
-          currentFallback.item.opacity = 1;
-          if (currentFallback.item.visualOpacity !== undefined) {
-            currentFallback.item.visualOpacity = 1;
+        // Swap base/overlay to reuse video players without recreating
+        var temp = fallbackBaseLoader;
+        fallbackBaseLoader = fallbackOverlayLoader;
+        fallbackOverlayLoader = temp;
+        fallbackOverlayLoader.opacity = 0.0;
+        stopLoaderPlayback(fallbackOverlayLoader);
+        if (fallbackBaseLoader.item && fallbackBaseLoader.item.opacity !== undefined) {
+          fallbackBaseLoader.item.opacity = 1;
+          if (fallbackBaseLoader.item.visualOpacity !== undefined) {
+            fallbackBaseLoader.item.visualOpacity = 1;
           }
         }
 
-        nextFallback.active = false;
         currentWallpaper.source = getDisplaySource(currentWallpaperPath);
         currentWallpaper.sourceSize = undefined;
         recalculateImageSizes();
