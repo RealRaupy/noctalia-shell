@@ -17,6 +17,7 @@ Singleton {
   readonly property string steamWorkshopDirectory: Settings.preprocessPath("~/.local/share/Steam/steamapps/workshop/content/431960/")
   property var previewCache: ({})
   property var previewProcesses: ({})
+  property var previewQueue: []
   property var previewScanProcesses: ({})
 
   // All available wallpaper transitions
@@ -235,11 +236,33 @@ Singleton {
     return Settings.cacheDirImagesWallpapers + hash + "@384x384.png";
   }
 
+  function fileExists(path) {
+    if (!path) {
+      return false;
+    }
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open("HEAD", "file://" + path, false);
+      xhr.send();
+      return xhr.status === 200 || xhr.status === 0;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function generateWallpaperPreview(path) {
     if (!path || !isVideoFile(path)) {
       return;
     }
     var previewPath = getPreviewPath(path);
+
+    if (previewCache[path] === undefined) {
+      if (fileExists(previewPath)) {
+        previewCache[path] = previewPath;
+        wallpaperPreviewReady(path, previewPath);
+        return;
+      }
+    }
 
     if (previewCache[path] && previewCache[path] !== true) {
       wallpaperPreviewReady(path, previewCache[path]);
@@ -252,6 +275,14 @@ Singleton {
     }
 
     previewCache[path] = previewCache[path] || true;
+
+    // Throttle concurrent generations to keep UI responsive
+    if (Object.keys(previewProcesses).length >= 2) {
+      if (previewQueue.indexOf(path) === -1) {
+        previewQueue.push(path);
+      }
+      return;
+    }
 
     var processString = `
     import QtQuick
@@ -276,6 +307,10 @@ Singleton {
       }
       delete previewProcesses[path];
       processObject.destroy();
+      if (previewQueue.length > 0) {
+        var nextPath = previewQueue.shift();
+        Qt.callLater(() => generateWallpaperPreview(nextPath));
+      }
     };
 
     processObject.exited.connect(handler);

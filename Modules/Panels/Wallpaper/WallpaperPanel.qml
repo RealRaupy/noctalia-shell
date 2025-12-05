@@ -10,13 +10,15 @@ import qs.Modules.Panels.Settings
 import qs.Services.UI
 import qs.Widgets
 
-SmartPanel {
+  SmartPanel {
   id: root
 
   preferredWidth: 800 * Style.uiScaleRatio
   preferredHeight: 600 * Style.uiScaleRatio
   preferredWidthRatio: 0.5
   preferredHeightRatio: 0.45
+  property bool previewsPrimed: false
+  property bool previewPrimingRunning: false
   property bool steamWallpaperAvailable: false
   property bool steamWallpaperCheckDone: false
   Component.onCompleted: {
@@ -193,10 +195,28 @@ SmartPanel {
                          searchInput.inputItem.forceActiveFocus();
                        }
                      });
-        if (!Settings.data.wallpaper.useWallhaven) {
-          WallpaperService.generateAllVideoPreviews();
-          WallpaperService.generateAllVideoPreviewsRecursive();
+        if (!Settings.data.wallpaper.useWallhaven && !root.previewsPrimed && !root.previewPrimingRunning) {
+          previewPrimeTimer.restart();
         }
+      }
+    }
+
+    Timer {
+      id: previewPrimeTimer
+      interval: 400
+      repeat: false
+      onTriggered: {
+        if (root.previewsPrimed || root.previewPrimingRunning) {
+          return;
+        }
+        root.previewPrimingRunning = true;
+        // Kick off a light prewarm once per session to avoid blocking the UI every time
+        WallpaperService.generateAllVideoPreviews();
+        WallpaperService.generateAllVideoPreviewsRecursive();
+        Qt.callLater(() => {
+                       root.previewPrimingRunning = false;
+                       root.previewsPrimed = true;
+                     });
       }
     }
 
@@ -468,8 +488,9 @@ SmartPanel {
                             WallhavenService.search(Settings.data.wallpaper.wallhavenQuery || "", 1);
                           }
                         } else if (!useWallhaven) {
-                          WallpaperService.generateAllVideoPreviews();
-                          WallpaperService.generateAllVideoPreviewsRecursive();
+                          if (!root.previewsPrimed && !root.previewPrimingRunning) {
+                            previewPrimeTimer.restart();
+                          }
                         }
                       }
         }
