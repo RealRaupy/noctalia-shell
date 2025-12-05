@@ -8,6 +8,23 @@ Singleton {
 
   function iconFromName(iconName, fallbackName) {
     const fallback = fallbackName || "application-x-executable";
+
+    // If we already have a concrete file/URL, return it directly so we don't lose icons with absolute paths.
+    if (iconName) {
+      const lower = iconName.toLowerCase();
+      if (lower.startsWith("file://") || lower.startsWith("qrc:/") || lower.startsWith("data:") || lower.startsWith("image://"))
+        return iconName;
+
+      // Handle absolute paths from .desktop files (including ~ and Windows-style paths)
+      if (iconName.startsWith("/") || iconName.startsWith("~") || /^[A-Za-z]:[\\/]/.test(iconName)) {
+        const expanded = (iconName.startsWith("~") && typeof Quickshell !== "undefined" && Quickshell.env)
+            ? iconName.replace(/^~/, Quickshell.env("HOME") || "~")
+            : iconName;
+        const normalized = expanded.replace(/\\/g, "/");
+        return normalized.startsWith("file://") ? normalized : `file://${normalized}`;
+      }
+    }
+
     try {
       if (iconName && typeof Quickshell !== 'undefined' && Quickshell.iconPath) {
         const p = Quickshell.iconPath(iconName, fallback);

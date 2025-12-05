@@ -2,28 +2,21 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import "../../../Helpers/FuzzySort.js" as FuzzySort
 import qs.Commons
 import qs.Modules.MainScreen
 import qs.Modules.Panels.Settings
 import qs.Services.UI
 import qs.Widgets
+import Quickshell.Io
 
-  SmartPanel {
+SmartPanel {
   id: root
 
   preferredWidth: 800 * Style.uiScaleRatio
   preferredHeight: 600 * Style.uiScaleRatio
   preferredWidthRatio: 0.5
   preferredHeightRatio: 0.45
-  property bool previewsPrimed: true
-  property bool previewPrimingRunning: false
-  property bool steamWallpaperAvailable: false
-  property bool steamWallpaperCheckDone: false
-  Component.onCompleted: {
-    steamWallpaperCheck.running = true;
-  }
 
   // Positioning
   readonly property string panelPosition: {
@@ -46,6 +39,7 @@ import qs.Widgets
 
   // Store direct reference to content for instant access
   property var contentItem: null
+  property var previewPrewarmProcess: null
 
   // Override keyboard handlers to enable grid navigation
   function onDownPressed() {
@@ -108,12 +102,6 @@ import qs.Widgets
     }
   }
 
-  function triggerPreviewPrewarm() {
-    if (!previewPrewarmProcess.running) {
-      previewPrewarmProcess.running = true;
-    }
-  }
-
   panelContent: Rectangle {
     id: wallpaperPanel
 
@@ -133,6 +121,10 @@ import qs.Widgets
 
     Component.onCompleted: {
       root.contentItem = wallpaperPanel;
+      if (!Settings.data.wallpaper.useWallhaven) {
+        WallpaperService.generateAllVideoPreviews();
+        Qt.callLater(() => WallpaperService.generateAllVideoPreviewsRecursive());
+      }
     }
 
     // Function to update Wallhaven resolution filter
@@ -182,40 +174,19 @@ import qs.Widgets
     }
 
     // Focus management
-      Connections {
+    Connections {
       target: root
       function onOpened() {
         // Ensure contentItem is set
         if (!root.contentItem) {
           root.contentItem = wallpaperPanel;
         }
+        root.triggerPreviewPrewarm();
         // Give initial focus to search input
         Qt.callLater(() => {
                        if (searchInput.inputItem) {
                          searchInput.inputItem.forceActiveFocus();
                        }
-                     });
-        if (!Settings.data.wallpaper.useWallhaven && !root.previewsPrimed && !root.previewPrimingRunning) {
-          previewPrimeTimer.restart();
-        }
-      }
-    }
-
-    Timer {
-      id: previewPrimeTimer
-      interval: 400
-      repeat: false
-      onTriggered: {
-        if (root.previewsPrimed || root.previewPrimingRunning) {
-          return;
-        }
-        root.previewPrimingRunning = true;
-        // Kick off a light prewarm once per session to avoid blocking the UI every time
-        WallpaperService.generateAllVideoPreviews();
-        WallpaperService.generateAllVideoPreviewsRecursive();
-        Qt.callLater(() => {
-                       root.previewPrimingRunning = false;
-                       root.previewsPrimed = true;
                      });
       }
     }
@@ -282,6 +253,8 @@ import qs.Widgets
               }
             } else {
               WallpaperService.refreshWallpapersList();
+              WallpaperService.generateAllVideoPreviews();
+              WallpaperService.generateAllVideoPreviewsRecursive();
             }
           }
         }
@@ -423,25 +396,29 @@ import qs.Widgets
           id: sourceComboBox
           Layout.fillWidth: false
 
-          model: {
-            var options = [
-              {
-                "key": "local",
-                "name": I18n.tr("wallpaper.panel.source.local")
-              }
-            ];
-            if (steamWallpaperAvailable && Settings.data.wallpaper.steamWallpaperIntegration) {
-              options.push({
-                             "key": "steam",
-                             "name": I18n.tr("wallpaper.panel.source.steam")
-                           });
+          model: Settings.data.wallpaper.steamWallpaperIntegration ? [
+            {
+              "key": "local",
+              "name": I18n.tr("wallpaper.panel.source.local")
+            },
+            {
+              "key": "wallhaven",
+              "name": I18n.tr("wallpaper.panel.source.wallhaven")
+            },
+            {
+              "key": "steam",
+              "name": "Steam (Wallpaper Engine)"
             }
-            options.push({
-                           "key": "wallhaven",
-                           "name": I18n.tr("wallpaper.panel.source.wallhaven")
-                         });
-            return options;
-          }
+          ] : [
+            {
+              "key": "local",
+              "name": I18n.tr("wallpaper.panel.source.local")
+            },
+            {
+              "key": "wallhaven",
+              "name": I18n.tr("wallpaper.panel.source.wallhaven")
+            }
+          ]
           currentKey: Settings.data.wallpaper.useWallhaven ? "wallhaven" : (Settings.data.wallpaper.useSteamWallpapers ? "steam" : "local")
           property bool skipNextSelected: false
           Component.onCompleted: {
@@ -456,14 +433,9 @@ import qs.Widgets
                           return;
                         }
                         var useWallhaven = (key === "wallhaven");
-                        var useSteam = (key === "steam");
+                        var useSteam = (key === "steam") && Settings.data.wallpaper.steamWallpaperIntegration;
                         Settings.data.wallpaper.useWallhaven = useWallhaven;
                         Settings.data.wallpaper.useSteamWallpapers = useSteam;
-                        if (useSteam) {
-                          Settings.data.wallpaper.useWallhaven = false;
-                        } else if (!useWallhaven) {
-                          Settings.data.wallpaper.useSteamWallpapers = false;
-                        }
                         // Update search input text based on mode
                         if (useWallhaven) {
                           searchInput.text = Settings.data.wallpaper.wallhavenQuery || "";
@@ -486,10 +458,6 @@ import qs.Widgets
                           if (wallhavenView && wallhavenView.initialized && !WallhavenService.fetching) {
                             wallhavenView.loading = true;
                             WallhavenService.search(Settings.data.wallpaper.wallhavenQuery || "", 1);
-                          }
-                        } else if (!useWallhaven) {
-                          if (!root.previewsPrimed && !root.previewPrimingRunning) {
-                            previewPrimeTimer.restart();
                           }
                         }
                       }
@@ -592,7 +560,6 @@ import qs.Widgets
         }
       }
     }
-
     Connections {
       target: Settings.data.wallpaper
       function onVideoPlaybackEnabledChanged() {
@@ -604,13 +571,10 @@ import qs.Widgets
       if (targetScreen === null) {
         return;
       }
-      var list = WallpaperService.getWallpapersList(targetScreen.name);
-      if (!Settings.data.wallpaper.videoPlaybackEnabled) {
-        list = list.filter(function (p) {
-          return !WallpaperService.isVideoFile(p);
-        });
-      }
-      wallpapersList = list;
+      const includeVideos = Settings.data.wallpaper.videoPlaybackEnabled;
+      wallpapersList = WallpaperService.getWallpapersList(targetScreen.name).filter(function (p) {
+        return includeVideos || !WallpaperService.isVideo(p);
+      });
       Logger.d("WallpaperPanel", "Got", wallpapersList.length, "wallpapers for screen", targetScreen.name);
 
       // Pre-compute basenames once for better performance
@@ -746,34 +710,16 @@ import qs.Widgets
           }
         }
 
-      delegate: ColumnLayout {
-        id: wallpaperItem
+        delegate: ColumnLayout {
+          id: wallpaperItem
 
-        property string wallpaperPath: modelData
-        property bool isSelected: (wallpaperPath === currentWallpaper)
-        property string filename: wallpaperPath.split('/').pop()
-        property bool isVideo: WallpaperService.isVideoFile(wallpaperPath)
-        property string displaySource: isVideo ? WallpaperService.getPreviewPath(wallpaperPath) : wallpaperPath
-        property bool previewRequested: false
+          property string wallpaperPath: modelData
+          property bool isSelected: (wallpaperPath === currentWallpaper)
+          property string filename: wallpaperPath.split('/').pop()
+          property bool isVideo: WallpaperService.getWallpaperType(wallpaperPath) === "video"
 
-        width: wallpaperGridView.itemSize
-        spacing: Style.marginXS
-
-        Connections {
-          target: WallpaperService
-          function onWallpaperPreviewReady(originalPath, previewPath) {
-            if (originalPath === wallpaperPath) {
-              displaySource = previewPath;
-            }
-          }
-        }
-
-        onVisibleChanged: {
-          if (visible && isVideo && !previewRequested) {
-            previewRequested = true;
-            WallpaperService.generateWallpaperPreview(wallpaperPath);
-          }
-        }
+          width: wallpaperGridView.itemSize
+          spacing: Style.marginXS
 
           Rectangle {
             id: imageContainer
@@ -781,9 +727,36 @@ import qs.Widgets
             Layout.preferredHeight: Math.round(wallpaperGridView.itemSize * 0.67)
             color: Color.transparent
 
+            property string previewPath: ""
+
+            function refreshPreview() {
+              previewPath = WallpaperService.getPreviewForDisplay(wallpaperPath);
+              if (isVideo && (!previewPath || previewPath === "" || previewPath === Settings.defaultWallpaper)) {
+                WallpaperService.ensureVideoPreview(wallpaperPath, WallpaperService.buildPreviewPath(wallpaperPath));
+              }
+            }
+
+            Component.onCompleted: refreshPreview()
+
+            Connections {
+              target: wallpaperItem
+              function onWallpaperPathChanged() {
+                refreshPreview();
+              }
+            }
+
+            Connections {
+              target: WallpaperService
+              function onWallpaperPreviewReady(originalPath, previewPathReady) {
+                if (originalPath === wallpaperPath) {
+                  imageContainer.refreshPreview();
+                }
+              }
+            }
+
             NImageCached {
               id: img
-              imagePath: displaySource
+              imagePath: imageContainer.previewPath
               cacheFolder: Settings.cacheDirImagesWallpapers
               anchors.fill: parent
             }
@@ -824,26 +797,6 @@ import qs.Widgets
             }
 
             Rectangle {
-              anchors.top: parent.top
-              anchors.left: parent.left
-              anchors.margins: Style.marginS
-              width: 28
-              height: 28
-              radius: width / 2
-              color: Color.mSurface
-              border.color: Color.mOutline
-              border.width: Style.borderS
-              visible: isVideo
-
-              NIcon {
-                icon: "movie"
-                pointSize: Style.fontSizeS
-                color: Color.mOnSurface
-                anchors.centerIn: parent
-              }
-            }
-
-            Rectangle {
               anchors.fill: parent
               color: Color.mSurface
               opacity: (hoverHandler.hovered || isSelected || wallpaperGridView.currentIndex === index) ? 0 : 0.3
@@ -852,6 +805,26 @@ import qs.Widgets
                 NumberAnimation {
                   duration: Style.animationFast
                 }
+              }
+            }
+
+            Rectangle {
+              anchors.right: parent.right
+              anchors.bottom: parent.bottom
+              anchors.margins: Style.marginS
+              width: 28
+              height: 22
+              radius: Style.radiusS
+              color: Qt.rgba(Color.mSurface.r, Color.mSurface.g, Color.mSurface.b, 0.8)
+              border.color: Color.mOutline
+              border.width: Style.borderS
+              visible: isVideo
+
+              NIcon {
+                anchors.centerIn: parent
+                icon: "movie"
+                pointSize: Style.fontSizeS
+                color: Color.mOnSurface
               }
             }
 
@@ -1357,23 +1330,36 @@ import qs.Widgets
     }
   }
 
-  Process {
-    id: steamWallpaperCheck
-    command: ["bash", "-lc", `${Quickshell.shellDir}/Bin/check-steam-wallpaper.sh`]
-    running: false
-    stdout: StdioCollector {}
-    stderr: StdioCollector {}
-    onExited: function (exitCode) {
-      steamWallpaperCheckDone = true;
-      steamWallpaperAvailable = exitCode === 0;
+  function triggerPreviewPrewarm() {
+    if (previewPrewarmProcess) {
+      return;
     }
-  }
 
-  Process {
-    id: previewPrewarmProcess
-    command: ["bash", "-lc", `${Quickshell.shellDir}/Bin/prewarm-video-wallpapers.sh`]
-    running: false
-    stdout: StdioCollector {}
-    stderr: StdioCollector {}
+    var script = Quickshell.shellDir + "/Bin/prewarm-video-wallpapers.sh";
+    var scriptEsc = script.replace(/'/g, "'\\''");
+
+    var processString = `
+    import QtQuick
+    import Quickshell.Io
+    Process {
+      id: process
+      command: ["bash", "-lc", "bash '${scriptEsc}' >/dev/null 2>&1"]
+      stdout: StdioCollector {}
+      stderr: StdioCollector {}
+    }
+    `;
+
+    var p = Qt.createQmlObject(processString, root, "WallpaperPrewarm");
+    previewPrewarmProcess = p;
+
+    p.exited.connect(function () {
+      previewPrewarmProcess = null;
+      try {
+        p.destroy();
+      } catch (e) {
+      }
+    });
+
+    p.running = true;
   }
 }

@@ -76,7 +76,6 @@ Item {
 
       localWorkspaces.append(workspaceData);
     }
-
     updateWorkspaceFocus();
   }
 
@@ -357,7 +356,7 @@ Item {
                 width: model.isFocused ? 4 : 0
                 height: model.isFocused ? 4 : 0
                 color: model.isFocused ? Color.mPrimary : Color.transparent
-                radius: Math.min(Style.radiusXXS, width / 2)
+                radius: width * 0.5
               }
 
               layer.effect: ShaderEffect {
@@ -437,7 +436,7 @@ Item {
           id: workspaceNumberBackground
 
           anchors.fill: parent
-          radius: Math.min(Style.radiusL, width / 2)
+          radius: width * 0.5
 
           color: {
             if (workspaceModel.isFocused)

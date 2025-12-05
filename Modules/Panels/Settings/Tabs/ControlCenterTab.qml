@@ -249,7 +249,7 @@ ColumnLayout {
         sectionName: I18n.tr("settings.control-center.shortcuts.sectionLeft")
         sectionId: "left"
         settingsDialogComponent: Qt.resolvedUrl(Quickshell.shellDir + "/Modules/Panels/Settings/ControlCenter/ControlCenterWidgetSettingsDialog.qml")
-        maxWidgets: Settings.data.controlCenter.shortcuts["right"].length > 5 ? 0 : (Settings.data.controlCenter.shortcuts["right"].length > 0 ? 5 : 10)
+        maxWidgets: 5
         widgetRegistry: ControlCenterWidgetRegistry
         widgetModel: Settings.data.controlCenter.shortcuts["left"]
         availableWidgets: availableWidgets
@@ -259,7 +259,6 @@ ColumnLayout {
         onReorderWidget: (section, fromIndex, toIndex) => _reorderWidgetInSection(section, fromIndex, toIndex)
         onUpdateWidgetSettings: (section, index, settings) => _updateWidgetSettingsInSection(section, index, settings)
         onMoveWidget: (fromSection, index, toSection) => _moveWidgetBetweenSections(fromSection, index, toSection)
-        onOpenPluginSettingsRequested: manifest => pluginSettingsDialog.openPluginSettings(manifest)
       }
 
       // Right
@@ -267,7 +266,7 @@ ColumnLayout {
         sectionName: I18n.tr("settings.control-center.shortcuts.sectionRight")
         sectionId: "right"
         settingsDialogComponent: Qt.resolvedUrl(Quickshell.shellDir + "/Modules/Panels/Settings/ControlCenter/ControlCenterWidgetSettingsDialog.qml")
-        maxWidgets: Settings.data.controlCenter.shortcuts["left"].length > 5 ? 0 : (Settings.data.controlCenter.shortcuts["left"].length > 0 ? 5 : 10)
+        maxWidgets: 5
         widgetRegistry: ControlCenterWidgetRegistry
         widgetModel: Settings.data.controlCenter.shortcuts["right"]
         availableWidgets: availableWidgets
@@ -277,7 +276,6 @@ ColumnLayout {
         onReorderWidget: (section, fromIndex, toIndex) => _reorderWidgetInSection(section, fromIndex, toIndex)
         onUpdateWidgetSettings: (section, index, settings) => _updateWidgetSettingsInSection(section, index, settings)
         onMoveWidget: (fromSection, index, toSection) => _moveWidgetBetweenSections(fromSection, index, toSection)
-        onOpenPluginSettingsRequested: manifest => pluginSettingsDialog.openPluginSettings(manifest)
       }
     }
   }
@@ -360,12 +358,5 @@ ColumnLayout {
   // Base list model for all combo boxes
   ListModel {
     id: availableWidgets
-  }
-
-  // Shared Plugin Settings Popup
-  NPluginSettingsPopup {
-    id: pluginSettingsDialog
-    parent: Overlay.overlay
-    showToastOnSave: false
   }
 }

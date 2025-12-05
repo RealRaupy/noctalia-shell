@@ -124,7 +124,7 @@ RowLayout {
       color: Color.mSurface
       border.color: combo.activeFocus ? Color.mSecondary : Color.mOutline
       border.width: Style.borderS
-      radius: Style.iRadiusM
+      radius: Style.radiusM
 
       Behavior on border.color {
         ColorAnimation {
@@ -184,11 +184,7 @@ RowLayout {
             id: defaultDelegate
             ItemDelegate {
               id: delegateRoot
-              width: listView.width - listView.scrollBarTotalWidth
-              leftPadding: Style.marginM
-              rightPadding: Style.marginM
-              topPadding: Style.marginS
-              bottomPadding: Style.marginS
+              width: listView.width
               hoverEnabled: true
               highlighted: ListView.view.currentIndex === index
 
@@ -205,7 +201,7 @@ RowLayout {
               }
 
               contentItem: RowLayout {
-                width: delegateRoot.width - delegateRoot.leftPadding - delegateRoot.rightPadding
+                width: parent.width
                 spacing: Style.marginM
 
                 NText {
@@ -223,58 +219,31 @@ RowLayout {
                 }
 
                 RowLayout {
-                  spacing: Style.marginXXS
+                  spacing: Style.marginS
                   Layout.alignment: Qt.AlignRight
 
-                  // Generic badge renderer
                   Repeater {
-                    model: {
-                      if (typeof badges === 'undefined' || badges === null)
-                        return 0;
-                      // Handle both arrays and ListModels
-                      if (typeof badges.length !== 'undefined')
-                        return badges.length;
-                      if (typeof badges.count !== 'undefined')
-                        return badges.count;
-                      return 0;
-                    }
+                    model: typeof badgeLocations !== 'undefined' ? badgeLocations : []
 
-                    delegate: NIcon {
-                      required property int index
-                      readonly property var badgeData: {
-                        if (typeof badges === 'undefined' || badges === null)
-                          return null;
-                        // Handle both arrays and ListModels
-                        if (typeof badges.length !== 'undefined')
-                          return badges[index];
-                        if (typeof badges.get !== 'undefined')
-                          return badges.get(index);
-                        return null;
-                      }
+                    delegate: Item {
+                      width: Style.baseWidgetSize * 0.7
+                      height: Style.baseWidgetSize * 0.7
 
-                      icon: badgeData && badgeData.icon ? badgeData.icon : ""
-                      pointSize: {
-                        if (!badgeData || !badgeData.size)
-                          return Style.fontSizeXS;
-                        if (badgeData.size === "xsmall")
-                          return Style.fontSizeXXS;
-                        else if (badgeData.size === "medium")
-                          return Style.fontSizeM;
-                        else
-                          return Style.fontSizeXS;
+                      NText {
+                        anchors.centerIn: parent
+                        text: modelData
+                        pointSize: Style.fontSizeXXS
+                        font.weight: Style.fontWeightBold
+                        color: highlighted ? Color.mOnHover : Color.mOnSurface
                       }
-                      color: highlighted ? Color.mOnHover : (badgeData && badgeData.color ? badgeData.color : Color.mOnSurface)
-                      Layout.preferredWidth: Style.baseWidgetSize * 0.6
-                      Layout.preferredHeight: Style.baseWidgetSize * 0.6
-                      visible: badgeData && badgeData.icon !== undefined && badgeData.icon !== ""
                     }
                   }
                 }
               }
               background: Rectangle {
-                anchors.fill: parent
+                width: listView.width
                 color: highlighted ? Color.mHover : Color.transparent
-                radius: Style.iRadiusS
+                radius: Style.radiusS
                 Behavior on color {
                   ColorAnimation {
                     duration: Style.animationFast
@@ -290,7 +259,7 @@ RowLayout {
         color: Color.mSurfaceVariant
         border.color: Color.mOutline
         border.width: Style.borderS
-        radius: Style.iRadiusM
+        radius: Style.radiusM
       }
     }
 

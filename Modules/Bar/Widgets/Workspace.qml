@@ -378,7 +378,7 @@ Item {
             }
           }
 
-          radius: Style.radiusM
+          radius: width * 0.5
           color: {
             if (model.isFocused)
               return Color.mPrimary;
@@ -527,7 +527,7 @@ Item {
             }
           }
 
-          radius: Style.radiusM
+          radius: width * 0.5
           color: {
             if (model.isFocused)
               return Color.mPrimary;

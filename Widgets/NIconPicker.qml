@@ -39,7 +39,7 @@ Popup {
 
   background: Rectangle {
     color: Color.mSurface
-    radius: Style.iRadiusL
+    radius: Style.radiusL
     border.color: Color.mPrimary
     border.width: Style.borderM
   }
@@ -60,7 +60,6 @@ Popup {
       }
       NIconButton {
         icon: "close"
-        tooltipText: I18n.tr("tooltips.close")
         onClicked: root.close()
       }
     }
@@ -83,7 +82,7 @@ Popup {
     }
 
     // Icon grid
-    NGridView {
+    GridView {
       id: grid
       Layout.fillWidth: true
       Layout.fillHeight: true
@@ -91,10 +90,12 @@ Popup {
       cellWidth: root.cellW
       cellHeight: root.cellH
       model: root.filteredIcons
+      clip: true
+      reuseItems: true
       delegate: Rectangle {
         width: grid.cellWidth
         height: grid.cellHeight
-        radius: Style.iRadiusS
+        radius: Style.radiusS
 
         color: (root.selectedIcon === modelData) ? Qt.alpha(Color.mPrimary, 0.15) : Color.transparent
         border.color: (root.selectedIcon === modelData) ? Color.mPrimary : Color.transparent

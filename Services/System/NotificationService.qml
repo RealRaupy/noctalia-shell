@@ -5,7 +5,6 @@ import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
-import Quickshell.Wayland
 import "../../Helpers/sha256.js" as Checksum
 import qs.Commons
 import qs.Services.Power
@@ -34,10 +33,8 @@ Singleton {
   property var imageQueue: []
 
   PanelWindow {
-    implicitHeight: 0
-    implicitWidth: 0
-    WlrLayershell.exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "noctalia-notification-image-renderer"
+    implicitHeight: 1
+    implicitWidth: 1
     color: Color.transparent
     mask: Region {}
 
@@ -464,8 +461,7 @@ Singleton {
 
     while (historyList.count > maxHistory) {
       const old = historyList.get(historyList.count - 1);
-      // Only delete cached images that are in our cache directory
-      if (old.cachedImage && old.cachedImage.startsWith(Settings.cacheDirImagesNotifications)) {
+      if (old.cachedImage && !old.cachedImage.startsWith("image://")) {
         Quickshell.execDetached(["rm", "-f", old.cachedImage]);
       }
       historyList.remove(historyList.count - 1);
@@ -703,28 +699,13 @@ Singleton {
     for (var i = 0; i < historyList.count; i++) {
       const notif = historyList.get(i);
       if (notif.id === notificationId) {
-        // Only delete cached images that are in our cache directory
-        if (notif.cachedImage && notif.cachedImage.startsWith(Settings.cacheDirImagesNotifications)) {
+        if (notif.cachedImage && !notif.cachedImage.startsWith("image://")) {
           Quickshell.execDetached(["rm", "-f", notif.cachedImage]);
         }
         historyList.remove(i);
         saveHistory();
         return true;
       }
-    }
-    return false;
-  }
-
-  function removeOldestHistory() {
-    if (historyList.count > 0) {
-      const oldest = historyList.get(historyList.count - 1);
-      // Only delete cached images that are in our cache directory
-      if (oldest.cachedImage && oldest.cachedImage.startsWith(Settings.cacheDirImagesNotifications)) {
-        Quickshell.execDetached(["rm", "-f", oldest.cachedImage]);
-      }
-      historyList.remove(historyList.count - 1);
-      saveHistory();
-      return true;
     }
     return false;
   }

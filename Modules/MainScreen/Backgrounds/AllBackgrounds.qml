@@ -90,9 +90,9 @@ Item {
         backgroundColor: panelBackgroundColor
       }
 
-      // Clock
+      // Calendar
       PanelBackground {
-        panel: root.windowRoot.clockPanelPlaceholder
+        panel: root.windowRoot.calendarPanelPlaceholder
         shapeContainer: backgroundsShape
         backgroundColor: panelBackgroundColor
       }
@@ -163,20 +163,6 @@ Item {
       // WiFi
       PanelBackground {
         panel: root.windowRoot.wifiPanelPlaceholder
-        shapeContainer: backgroundsShape
-        backgroundColor: panelBackgroundColor
-      }
-
-      // Plugin Panel Slot 1
-      PanelBackground {
-        panel: root.windowRoot.pluginPanel1Placeholder
-        shapeContainer: backgroundsShape
-        backgroundColor: panelBackgroundColor
-      }
-
-      // Plugin Panel Slot 2
-      PanelBackground {
-        panel: root.windowRoot.pluginPanel2Placeholder
         shapeContainer: backgroundsShape
         backgroundColor: panelBackgroundColor
       }

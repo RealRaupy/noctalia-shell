@@ -17,16 +17,14 @@ ColumnLayout {
   property string valueIcon: widgetData.icon !== undefined ? widgetData.icon : widgetMetadata.icon
   property bool valueUseDistroLogo: widgetData.useDistroLogo !== undefined ? widgetData.useDistroLogo : widgetMetadata.useDistroLogo
   property string valueCustomIconPath: widgetData.customIconPath !== undefined ? widgetData.customIconPath : ""
-  property bool valueEnableColorization: widgetData.enableColorization || false
-  property string valueColorizeSystemIcon: widgetData.colorizeSystemIcon !== undefined ? widgetData.colorizeSystemIcon : (widgetMetadata.colorizeSystemIcon !== undefined ? widgetMetadata.colorizeSystemIcon : "none")
+  property bool valueColorizeDistroLogo: widgetData.colorizeDistroLogo !== undefined ? widgetData.colorizeDistroLogo : (widgetMetadata.colorizeDistroLogo !== undefined ? widgetMetadata.colorizeDistroLogo : false)
 
   function saveSettings() {
     var settings = Object.assign({}, widgetData || {});
     settings.icon = valueIcon;
     settings.useDistroLogo = valueUseDistroLogo;
     settings.customIconPath = valueCustomIconPath;
-    settings.enableColorization = valueEnableColorization;
-    settings.colorizeSystemIcon = valueColorizeSystemIcon;
+    settings.colorizeDistroLogo = valueColorizeDistroLogo;
     return settings;
   }
 
@@ -36,47 +34,20 @@ ColumnLayout {
     checked: valueUseDistroLogo
     onToggled: function (checked) {
       valueUseDistroLogo = checked;
+      if (checked) {
+        valueCustomIconPath = "";
+        valueIcon = "";
+      }
     }
   }
 
   NToggle {
-    label: I18n.tr("bar.widget-settings.control-center.enable-colorization.label")
-    description: I18n.tr("bar.widget-settings.control-center.enable-colorization.description")
-    checked: valueEnableColorization
+    visible: valueUseDistroLogo
+    label: I18n.tr("bar.widget-settings.control-center.colorize-distro-logo.label")
+    description: I18n.tr("bar.widget-settings.control-center.colorize-distro-logo.description")
+    checked: valueColorizeDistroLogo
     onToggled: function (checked) {
-      valueEnableColorization = checked;
-    }
-  }
-
-  NComboBox {
-    visible: valueEnableColorization
-    label: I18n.tr("bar.widget-settings.control-center.color-selection.label")
-    description: I18n.tr("bar.widget-settings.control-center.color-selection.description")
-    model: [
-      {
-        "name": I18n.tr("options.colors.none"),
-        "key": "none"
-      },
-      {
-        "name": I18n.tr("options.colors.primary"),
-        "key": "primary"
-      },
-      {
-        "name": I18n.tr("options.colors.secondary"),
-        "key": "secondary"
-      },
-      {
-        "name": I18n.tr("options.colors.tertiary"),
-        "key": "tertiary"
-      },
-      {
-        "name": I18n.tr("options.colors.error"),
-        "key": "error"
-      }
-    ]
-    currentKey: valueColorizeSystemIcon
-    onSelected: function (key) {
-      valueColorizeSystemIcon = key;
+      valueColorizeDistroLogo = checked;
     }
   }
 
@@ -92,16 +63,16 @@ ColumnLayout {
       Layout.preferredWidth: Style.fontSizeXL * 2
       Layout.preferredHeight: Style.fontSizeXL * 2
       Layout.alignment: Qt.AlignVCenter
-      radius: Math.min(Style.radiusL, Layout.preferredWidth / 2)
+      radius: width * 0.5
       imagePath: valueCustomIconPath
-      visible: valueCustomIconPath !== "" && !valueUseDistroLogo
+      visible: valueCustomIconPath !== ""
     }
 
     NIcon {
       Layout.alignment: Qt.AlignVCenter
       icon: valueIcon
       pointSize: Style.fontSizeXXL * 1.5
-      visible: valueIcon !== "" && valueCustomIconPath === "" && !valueUseDistroLogo
+      visible: valueIcon !== "" && valueCustomIconPath === ""
     }
   }
 

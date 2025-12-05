@@ -232,129 +232,62 @@ ColumnLayout {
 
   // Temperature
   ColumnLayout {
-    visible: Settings.data.nightLight.enabled
-    spacing: Style.marginM
-    Layout.fillWidth: true
+    spacing: Style.marginXS
+    Layout.alignment: Qt.AlignVCenter
 
-    // Night temperature
     NLabel {
-      label: I18n.tr("settings.display.night-light.temperature.night")
-      description: I18n.tr("settings.display.night-light.temperature.night-description")
-      Layout.fillWidth: true
+      label: I18n.tr("settings.display.night-light.temperature.label")
+      description: I18n.tr("settings.display.night-light.temperature.description")
     }
 
     RowLayout {
-      Layout.fillWidth: true
+      visible: Settings.data.nightLight.enabled
       spacing: Style.marginM
+      Layout.fillWidth: false
+      Layout.fillHeight: true
+      Layout.alignment: Qt.AlignVCenter
 
-      NSlider {
-        id: nightSlider
-        Layout.fillWidth: true
+      NText {
+        text: I18n.tr("settings.display.night-light.temperature.night")
+        pointSize: Style.fontSizeM
+        color: Color.mOnSurfaceVariant
+        Layout.alignment: Qt.AlignVCenter
+      }
 
-        from: 1000
-        to: 6500
-        value: Settings.data.nightLight.nightTemp
-
-        // Clamp as the thumb moves, but do NOT change Settings here
-        onValueChanged: {
+      NTextInput {
+        text: Settings.data.nightLight.nightTemp
+        inputMethodHints: Qt.ImhDigitsOnly
+        Layout.alignment: Qt.AlignVCenter
+        onEditingFinished: {
+          var nightTemp = parseInt(text);
           var dayTemp = parseInt(Settings.data.nightLight.dayTemp);
-          var v = Math.round(value);
-
-          if (!isNaN(dayTemp)) {
-            var maxNight = dayTemp - 500;
-            v = Math.min(maxNight, Math.max(1000, v));
-          } else {
-            v = Math.max(1000, v);
-          }
-
-          if (v !== value)
-            value = v;
-        }
-
-        // Only write back to Settings when the user releases the slider
-        onPressedChanged: {
-          if (!pressed) {
-            var dayTemp = parseInt(Settings.data.nightLight.dayTemp);
-            var v = Math.round(value);
-
-            if (!isNaN(dayTemp)) {
-              var maxNight = dayTemp - 500;
-              v = Math.min(maxNight, Math.max(1000, v));
-            } else {
-              v = Math.max(1000, v);
-            }
-
-            Settings.data.nightLight.nightTemp = v;
+          if (!isNaN(nightTemp) && !isNaN(dayTemp)) {
+            // Clamp value between [1000 .. (dayTemp-500)]
+            var clampedValue = Math.min(dayTemp - 500, Math.max(1000, nightTemp));
+            text = Settings.data.nightLight.nightTemp = clampedValue.toString();
           }
         }
       }
 
       NText {
-        text: nightSlider.value + "K"
+        text: I18n.tr("settings.display.night-light.temperature.day")
         pointSize: Style.fontSizeM
         color: Color.mOnSurfaceVariant
         Layout.alignment: Qt.AlignVCenter
       }
-    }
-
-    // Day temperature
-    NLabel {
-      label: I18n.tr("settings.display.night-light.temperature.day")
-      description: I18n.tr("settings.display.night-light.temperature.day-description")
-      Layout.fillWidth: true
-    }
-
-    RowLayout {
-      Layout.fillWidth: true
-      spacing: Style.marginM
-
-      NSlider {
-        id: daySlider
-        Layout.fillWidth: true
-
-        from: 1000
-        to: 6500
-        value: Settings.data.nightLight.dayTemp
-
-        // Clamp as the thumb moves, but do NOT change Settings here
-        onValueChanged: {
+      NTextInput {
+        text: Settings.data.nightLight.dayTemp
+        inputMethodHints: Qt.ImhDigitsOnly
+        Layout.alignment: Qt.AlignVCenter
+        onEditingFinished: {
+          var dayTemp = parseInt(text);
           var nightTemp = parseInt(Settings.data.nightLight.nightTemp);
-          var v = Math.round(value);
-
-          if (!isNaN(nightTemp)) {
-            var minDay = nightTemp + 500;
-            v = Math.max(minDay, Math.min(6500, v));
-          } else {
-            v = Math.min(6500, v);
-          }
-
-          if (v !== value)
-            value = v;
-        }
-
-        // Only write back to Settings when the user releases the slider
-        onPressedChanged: {
-          if (!pressed) {
-            var nightTemp = parseInt(Settings.data.nightLight.nightTemp);
-            var v = Math.round(value);
-
-            if (!isNaN(nightTemp)) {
-              var minDay = nightTemp + 500;
-              v = Math.max(minDay, Math.min(6500, v));
-            } else {
-              v = Math.min(6500, v);
-            }
-
-            Settings.data.nightLight.dayTemp = v;
+          if (!isNaN(nightTemp) && !isNaN(dayTemp)) {
+            // Clamp value between [(nightTemp+500) .. 6500]
+            var clampedValue = Math.max(nightTemp + 500, Math.min(6500, dayTemp));
+            text = Settings.data.nightLight.dayTemp = clampedValue.toString();
           }
         }
-      }
-
-      NText {
-        text: daySlider.value + "K"
-        pointSize: Style.fontSizeM
-        color: Color.mOnSurfaceVariant
-        Layout.alignment: Qt.AlignVCenter
       }
     }
   }

@@ -85,9 +85,11 @@ Item {
     id: pillBackground
     width: collapseToIcon ? pillHeight : root.width
     height: pillHeight
-    radius: Style.radiusM
+    radius: halfPillHeight
     color: root.bgColor
     anchors.verticalCenter: parent.verticalCenter
+
+    readonly property int halfPillHeight: Math.round(pillHeight * 0.5)
 
     Behavior on color {
       ColorAnimation {
@@ -109,10 +111,12 @@ Item {
     opacity: revealed ? Style.opacityFull : Style.opacityNone
     color: Color.transparent // Make pill background transparent to avoid double opacity
 
-    topLeftRadius: oppositeDirection ? 0 : Style.radiusM
-    bottomLeftRadius: oppositeDirection ? 0 : Style.radiusM
-    topRightRadius: oppositeDirection ? Style.radiusM : 0
-    bottomRightRadius: oppositeDirection ? Style.radiusM : 0
+    readonly property int halfPillHeight: Math.round(pillHeight * 0.5)
+
+    topLeftRadius: oppositeDirection ? 0 : halfPillHeight
+    bottomLeftRadius: oppositeDirection ? 0 : halfPillHeight
+    topRightRadius: oppositeDirection ? halfPillHeight : 0
+    bottomRightRadius: oppositeDirection ? halfPillHeight : 0
     anchors.verticalCenter: parent.verticalCenter
 
     NText {
@@ -157,7 +161,7 @@ Item {
     id: iconCircle
     width: pillHeight
     height: pillHeight
-    radius: Math.min(Style.radiusL, width / 2)
+    radius: width * 0.5
     color: Color.transparent // Make icon background transparent to avoid double opacity
     anchors.verticalCenter: parent.verticalCenter
 
@@ -259,7 +263,7 @@ Item {
     onEntered: {
       hovered = true;
       root.entered();
-      TooltipService.show(pill, root.tooltipText, BarService.getTooltipDirection(), (forceOpen || forceClose) ? Style.tooltipDelay : Style.tooltipDelayLong);
+      TooltipService.show(pill, root.tooltipText, BarService.getTooltipDirection(), Style.tooltipDelayLong);
       if (forceClose) {
         return;
       }
@@ -288,7 +292,7 @@ Item {
   }
 
   function show() {
-    if (collapseToIcon || root.text.trim().length === 0)
+    if (collapseToIcon)
       return;
     if (!showPill) {
       shouldAnimateHide = autoHide;
@@ -312,7 +316,7 @@ Item {
   }
 
   function showDelayed() {
-    if (collapseToIcon || root.text.trim().length === 0)
+    if (collapseToIcon)
       return;
     if (!showPill) {
       shouldAnimateHide = autoHide;

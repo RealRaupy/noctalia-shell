@@ -29,8 +29,6 @@ Singleton {
   property bool spicetifyAvailable: false
   property bool telegramAvailable: false
   property bool cavaAvailable: false
-  property bool emacsAvailable: false
-  property bool niriAvailable: false
 
   // Discord client auto-detection
   property var availableDiscordClients: []
@@ -187,9 +185,7 @@ Singleton {
                                             "gnomeCalendarAvailable": ["which", "gnome-calendar"],
                                             "spicetifyAvailable": ["which", "spicetify"],
                                             "telegramAvailable": ["sh", "-c", "command -v telegram-desktop >/dev/null 2>&1 || command -v Telegram >/dev/null 2>&1 || (command -v flatpak >/dev/null 2>&1 && flatpak list --app | grep -q 'org.telegram.desktop')"],
-                                            "cavaAvailable": ["which", "cava"],
-                                            "emacsAvailable": ["sh", "-c", "test -d \"$HOME/.config/doom\" || test -d \"$HOME/.emacs.d\""],
-                                            "niriAvailable": ["which", "niri"]
+                                            "cavaAvailable": ["which", "cava"]
                                           })
 
   // Internal tracking

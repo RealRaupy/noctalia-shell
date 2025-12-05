@@ -63,28 +63,132 @@ ColumnLayout {
     }
   }
 
-  // Large preview area
+  // Large preview with rounded corners and shadow effect
   Rectangle {
     Layout.fillWidth: true
     Layout.fillHeight: true
     Layout.minimumHeight: 180
     color: Color.mSurfaceVariant
     radius: Style.radiusL
+    border.color: selectedWallpaper !== "" ? Color.mPrimary : Color.mOutline
+    border.width: selectedWallpaper !== "" ? 2 : 1
+    clip: true
 
-    // Image with rounded corners
-    NImageRounded {
+    // Mirror WallpaperPanel approach with rounded shader mask
+    NImageCached {
+      id: previewCached
       anchors.fill: parent
-      visible: selectedWallpaper !== ""
-      imagePath: selectedWallpaper !== "" ? "file://" + selectedWallpaper : ""
+      anchors.margins: 4
+      cacheFolder: Settings.cacheDirImagesWallpapers
+      property string previewPath: ""
+      function refreshPreview() {
+        if (selectedWallpaper !== "") {
+          previewPath = WallpaperService.getPreviewForDisplay(selectedWallpaper);
+        } else {
+          previewPath = "";
+        }
+      }
+      imagePath: previewPath
+      visible: false // used as texture source for the shader
+
+      onPreviewPathChanged: {
+        // Force reload when preview changes
+        source = previewPath;
+      }
+
+      Component.onCompleted: refreshPreview()
+
+      Connections {
+        target: root
+        function onSelectedWallpaperChanged() {
+          previewCached.refreshPreview();
+        }
+      }
+
+      Connections {
+        target: WallpaperService
+        function onWallpaperPreviewReady(originalPath, readyPath) {
+          if (originalPath === selectedWallpaper) {
+            previewCached.refreshPreview();
+          }
+        }
+      }
+    }
+
+    ShaderEffect {
+      anchors.fill: parent
+      anchors.margins: 4
+      property var source: ShaderEffectSource {
+        sourceItem: previewCached
+        hideSource: true
+        live: true
+        recursive: false
+        format: ShaderEffectSource.RGBA
+      }
+      property real itemWidth: width
+      property real itemHeight: height
+      property real cornerRadius: Style.radiusL
+      property real imageOpacity: 1.0
+      fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/rounded_image.frag.qsb")
+      supportsAtlasTextures: false
+      blending: true
+    }
+
+    // Loading placeholder
+    Rectangle {
+      anchors.fill: parent
+      color: Color.mSurfaceVariant
       radius: Style.radiusL
-      borderColor: selectedWallpaper !== "" ? Color.mPrimary : Color.mOutline
-      borderWidth: selectedWallpaper !== "" ? 2 : 1
+      visible: (previewCached.status === Image.Loading || previewCached.status === Image.Null) && selectedWallpaper !== ""
+
+      NIcon {
+        icon: "image"
+        pointSize: Style.fontSizeXXL
+        color: Color.mOnSurfaceVariant
+        anchors.centerIn: parent
+      }
+    }
+
+    // Error placeholder
+    Rectangle {
+      anchors.fill: parent
+      color: Color.mError
+      opacity: 0.1
+      radius: Style.radiusL
+      visible: previewCached.status === Image.Error && selectedWallpaper !== ""
+
+      ColumnLayout {
+        anchors.centerIn: parent
+        spacing: Style.marginS
+
+        NIcon {
+          icon: "alert-circle"
+          pointSize: Style.fontSizeXXL
+          color: Color.mError
+          Layout.alignment: Qt.AlignHCenter
+        }
+
+        NText {
+          text: I18n.tr("setup.wallpaper.preview-error")
+          pointSize: Style.fontSizeS
+          color: Color.mError
+          Layout.alignment: Qt.AlignHCenter
+        }
+      }
+    }
+
+    NBusyIndicator {
+      anchors.centerIn: parent
+      visible: (previewCached.status === Image.Loading || previewCached.status === Image.Null) && selectedWallpaper !== ""
+      running: visible
+      size: 28
     }
 
     ColumnLayout {
       anchors.centerIn: parent
       spacing: Style.marginL
       visible: selectedWallpaper === ""
+      opacity: 0.6
 
       Rectangle {
         Layout.alignment: Qt.AlignHCenter
@@ -92,11 +196,12 @@ ColumnLayout {
         height: 64
         radius: width / 2
         color: Color.mPrimary
+        opacity: 0.15
 
         NIcon {
           icon: "sparkles"
           pointSize: Style.fontSizeXXL
-          color: Color.mOnPrimary
+          color: Color.mPrimary
           anchors.centerIn: parent
         }
       }
@@ -120,7 +225,7 @@ ColumnLayout {
   // Wallpaper gallery strip
   Item {
     Layout.fillWidth: true
-    Layout.preferredHeight: 88
+    Layout.preferredHeight: 90
     visible: filteredWallpapers.length > 0
 
     ScrollView {
@@ -158,42 +263,37 @@ ColumnLayout {
 
         Repeater {
           model: filteredWallpapers
-          delegate: Item {
-            readonly property int borderWidth: Style.borderM
-            readonly property int imageMargin: 1
-            readonly property int baseWidth: 120
-            readonly property int baseHeight: 80
+          delegate: Rectangle {
+            Layout.preferredWidth: 120
+            Layout.preferredHeight: 80
+            color: Color.mSurface
+            border.color: selectedWallpaper === modelData ? Color.mPrimary : Color.mOutline
+            border.width: selectedWallpaper === modelData ? 2 : 1
+            clip: true
 
-            Layout.preferredWidth: baseWidth + (borderWidth + imageMargin) * 2
-            Layout.preferredHeight: baseHeight + (borderWidth + imageMargin) * 2
-
-            // Border container with proper spacing to prevent clipping
-            Rectangle {
+            // Cached thumbnail
+            NImageCached {
+              id: thumbCached
               anchors.fill: parent
-              anchors.margins: imageMargin
-              color: Color.transparent
-              border.color: selectedWallpaper === modelData ? Color.mPrimary : Color.mOutline
-              border.width: borderWidth
-
-              // Cached thumbnail
-              NImageCached {
-                id: thumbCached
-                anchors.fill: parent
-                anchors.margins: borderWidth
-                cacheFolder: Settings.cacheDirImagesWallpapers
-                imagePath: WallpaperService.isVideoFile(modelData) ? WallpaperService.getPreviewPath(modelData) : modelData
-                Component.onCompleted: {
-                  if (WallpaperService.isVideoFile(modelData)) {
-                    WallpaperService.generateWallpaperPreview(modelData);
-                  }
-                }
+              anchors.margins: 3
+              property string previewPath: ""
+              function refreshPreview() {
+                previewPath = WallpaperService.getPreviewForDisplay(modelData);
+                source = previewPath ? previewPath : "";
               }
+              Component.onCompleted: refreshPreview()
 
               Connections {
+                target: root
+                function onFilteredWallpapersChanged() {
+                  thumbCached.refreshPreview();
+                }
+              }
+              Connections {
                 target: WallpaperService
-                function onWallpaperPreviewReady(originalPath, previewPath) {
+                function onWallpaperPreviewReady(originalPath, readyPath) {
                   if (originalPath === modelData) {
-                    thumbCached.imagePath = previewPath;
+                    thumbCached.refreshPreview();
                   }
                 }
               }
@@ -359,12 +459,7 @@ ColumnLayout {
       return;
     }
     if (typeof WallpaperService !== "undefined" && WallpaperService.getWallpapersList) {
-      var wallpapers = WallpaperService.getWallpapersList(Screen.name) || [];
-      if (!Settings.data.wallpaper.videoPlaybackEnabled) {
-        wallpapers = wallpapers.filter(function (p) {
-          return !WallpaperService.isVideoFile(p);
-        });
-      }
+      var wallpapers = WallpaperService.getWallpapersList(Screen.name);
       wallpapersList = wallpapers;
       updateFilteredWallpapers();
       if (wallpapersList.length > 0 && selectedWallpaper === "") {
@@ -376,7 +471,7 @@ ColumnLayout {
   }
 
   function readDirectoryImages(directoryPath) {
-    directoryScanner.command = ["find", directoryPath, "-type", "f", "\\(-iname", "*.jpg", "-o", "-iname", "*.jpeg", "-o", "-iname", "*.png", "-o", "-iname", "*.bmp", "-o", "-iname", "*.webp", "-o", "-iname", "*.svg", "-o", "-iname", "*.mp4", "-o", "-iname", "*.webm", "-o", "-iname", "*.mov", "-o", "-iname", "*.mkv", "-o", "-iname", "*.gif", "\\)"];
+    directoryScanner.command = ["find", directoryPath, "-type", "f", "\\(-iname", "*.jpg", "-o", "-iname", "*.jpeg", "-o", "-iname", "*.png", "-o", "-iname", "*.bmp", "-o", "-iname", "*.webp", "-o", "-iname", "*.svg", "-o", "-iname", "*.mp4", "-o", "-iname", "*.webm", "-o", "-iname", "*.mov", "-o", "-iname", "*.mkv", "\\)"];
     directoryScanner.running = true;
     return [];
   }
@@ -398,13 +493,6 @@ ColumnLayout {
       if (screenName === Screen.name) {
         Qt.callLater(refreshWallpapers);
       }
-    }
-  }
-
-  Connections {
-    target: Settings.data.wallpaper
-    function onVideoPlaybackEnabledChanged() {
-      Qt.callLater(refreshWallpapers);
     }
   }
 
@@ -443,7 +531,7 @@ ColumnLayout {
 
   Process {
     id: directoryScanner
-    command: ["find", "", "-type", "f", "\\(-iname", "*.jpg", "-o", "-iname", "*.jpeg", "-o", "-iname", "*.png", "-o", "-iname", "*.bmp", "-o", "-iname", "*.webp", "-o", "-iname", "*.svg", "-o", "-iname", "*.mp4", "-o", "-iname", "*.webm", "-o", "-iname", "*.mov", "-o", "-iname", "*.mkv", "-o", "-iname", "*.gif", "\\)"]
+    command: ["find", "", "-type", "f", "\\(-iname", "*.jpg", "-o", "-iname", "*.jpeg", "-o", "-iname", "*.png", "-o", "-iname", "*.bmp", "-o", "-iname", "*.webp", "-o", "-iname", "*.svg", "-o", "-iname", "*.mp4", "-o", "-iname", "*.webm", "-o", "-iname", "*.mov", "-o", "-iname", "*.mkv", "\\)"]
     running: false
     stdout: StdioCollector {}
     stderr: StdioCollector {}
@@ -456,11 +544,6 @@ ColumnLayout {
           if (line !== '') {
             images.push(line);
           }
-        }
-        if (!Settings.data.wallpaper.videoPlaybackEnabled) {
-          images = images.filter(function (p) {
-            return !WallpaperService.isVideoFile(p);
-          });
         }
         wallpapersList = images;
         updateFilteredWallpapers();

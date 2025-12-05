@@ -15,7 +15,7 @@ import qs.Widgets
 SmartPanel {
   id: root
 
-  preferredWidth: Math.round(420 * Style.uiScaleRatio)
+  preferredWidth: Math.round(400 * Style.uiScaleRatio)
   preferredHeight: {
     var headerHeight = Settings.data.sessionMenu.showHeader ? Style.baseWidgetSize * 0.6 : 0;
 
@@ -101,8 +101,7 @@ SmartPanel {
                        "icon": metadata.icon,
                        "title": metadata.title,
                        "isShutdown": metadata.isShutdown,
-                       "countdownEnabled": settingOption.countdownEnabled !== undefined ? settingOption.countdownEnabled : true,
-                       "command": settingOption.command || ""
+                       "countdownEnabled": settingOption.countdownEnabled !== undefined ? settingOption.countdownEnabled : true
                      });
       }
     }
@@ -126,8 +125,7 @@ SmartPanel {
                          "icon": metadata.icon,
                          "title": metadata.title,
                          "isShutdown": metadata.isShutdown,
-                         "countdownEnabled": settingOption.countdownEnabled !== undefined ? settingOption.countdownEnabled : true,
-                         "command": settingOption.command || ""
+                         "countdownEnabled": settingOption.countdownEnabled !== undefined ? settingOption.countdownEnabled : true
                        });
         }
       }
@@ -192,25 +190,6 @@ SmartPanel {
     // Stop timer but don't reset other properties yet
     countdownTimer.stop();
 
-    // Find the option to check for custom command
-    var option = null;
-    for (var i = 0; i < powerOptions.length; i++) {
-      if (powerOptions[i].action === action) {
-        option = powerOptions[i];
-        break;
-      }
-    }
-
-    // If custom command is defined, execute it
-    if (option && option.command && option.command.trim() !== "") {
-      Logger.i("SessionMenu", "Executing custom command for action:", action, "Command:", option.command);
-      Quickshell.execDetached(["sh", "-c", option.command]);
-      cancelTimer();
-      root.close();
-      return;
-    }
-
-    // Otherwise, use default behavior
     switch (action) {
     case "lock":
       // Access lockScreen via PanelService
@@ -544,7 +523,7 @@ SmartPanel {
         anchors.verticalCenter: parent.verticalCenter
         width: 20
         height: 20
-        radius: Math.min(Style.radiusL, width / 2)
+        radius: width * 0.5
         color: Color.mPrimary
         visible: buttonRoot.pending
 

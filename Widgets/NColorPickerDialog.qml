@@ -48,7 +48,7 @@ Popup {
 
   background: Rectangle {
     color: Color.mSurface
-    radius: Style.iRadiusS
+    radius: Style.radiusS
     border.color: Color.mPrimary
     border.width: Style.borderM
   }
@@ -99,7 +99,7 @@ Popup {
       Rectangle {
         Layout.fillWidth: true
         Layout.preferredHeight: 80
-        radius: Style.iRadiusS
+        radius: Style.radiusS
         color: root.selectedColor
         border.color: Color.mOutline
         border.width: Style.borderS
@@ -564,7 +564,7 @@ Popup {
                 Rectangle {
                   width: 10
                   height: 10
-                  radius: Math.min(Style.iRadiusXS, width / 2)
+                  radius: 5
                   color: "transparent"
                   border.color: root.selectedColor.hsvValue < 0.5 ? "white" : "black"
                   border.width: 1
@@ -620,6 +620,43 @@ Popup {
               columnSpacing: 6
               rowSpacing: 6
 
+              Repeater {
+                model: ColorList.colors
+
+                Rectangle {
+                  width: 24
+                  height: 24
+                  radius: Style.radiusXXS
+                  color: modelData.color
+                  border.color: root.selectedColor.toString() === modelData.color.toString() ? Color.mPrimary : Color.mOutline
+                  border.width: Math.max(1, root.selectedColor.toString() === modelData.color.toString() ? Style.borderM : Style.borderS)
+
+                  MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
+
+                    onEntered: {
+                      TooltipService.show(parent, modelData.name + "\n" + parent.color.toString().toUpperCase());
+                    }
+                    onExited: {
+                      TooltipService.hide();
+                    }
+                    onClicked: {
+                      root.selectedColor = modelData.color;
+                      TooltipService.hide();
+                    }
+                  }
+                }
+              }
+
+              NDivider {
+                Layout.columnSpan: 15
+                Layout.fillWidth: true
+                Layout.topMargin: Style.marginXS
+                Layout.bottomMargin: 0
+              }
+
               NLabel {
                 Layout.columnSpan: 15
                 Layout.fillWidth: true
@@ -661,44 +698,7 @@ Popup {
                 Rectangle {
                   width: 24
                   height: 24
-                  radius: Style.iRadiusXXS
-                  color: modelData.color
-                  border.color: root.selectedColor.toString() === modelData.color.toString() ? Color.mPrimary : Color.mOutline
-                  border.width: Math.max(1, root.selectedColor.toString() === modelData.color.toString() ? Style.borderM : Style.borderS)
-
-                  MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    hoverEnabled: true
-
-                    onEntered: {
-                      TooltipService.show(parent, modelData.name + "\n" + parent.color.toString().toUpperCase());
-                    }
-                    onExited: {
-                      TooltipService.hide();
-                    }
-                    onClicked: {
-                      root.selectedColor = modelData.color;
-                      TooltipService.hide();
-                    }
-                  }
-                }
-              }
-
-              NDivider {
-                Layout.columnSpan: 15
-                Layout.fillWidth: true
-                Layout.topMargin: Style.marginXS
-                Layout.bottomMargin: 0
-              }
-
-              Repeater {
-                model: ColorList.colors
-
-                Rectangle {
-                  width: 24
-                  height: 24
-                  radius: Math.min(Style.iRadiusXS, width / 2)
+                  radius: 4
                   color: modelData.color
                   border.color: root.selectedColor.toString() === modelData.color.toString() ? Color.mPrimary : Color.mOutline
                   border.width: root.selectedColor.toString() === modelData.color.toString() ? 2 : 1
@@ -728,8 +728,8 @@ Popup {
 
       RowLayout {
         Layout.fillWidth: true
-        Layout.topMargin: 1
-        Layout.bottomMargin: 1
+        //Layout.topMargin: 20
+        //Layout.bottomMargin: 20
         spacing: 10
 
         Item {

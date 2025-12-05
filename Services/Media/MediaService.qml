@@ -44,10 +44,9 @@ Singleton {
     let genericPlayers = [];
     for (var i = 0; i < allPlayers.length; i++) {
       const identity = String(allPlayers[i].identity || "").toLowerCase();
-      const name = String(allPlayers[i].name || "").toLowerCase();
       const match = blacklist.find(b => {
                                      const s = String(b || "").toLowerCase();
-                                     return s && (identity.includes(s) || name.includes(s));
+                                     return s && (identity.includes(s));
                                    });
       if (match)
         continue;

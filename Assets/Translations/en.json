@@ -8,7 +8,7 @@
       "active-window": {
         "colorize-icons": {
           "description": "Apply theme colors to active window icon.",
-          "label": "Colorize icons"
+          "label": "Colorize Icons"
         },
         "hide-mode": {
           "description": "Controls how the widget behaves when no window is active.",
@@ -16,7 +16,7 @@
         },
         "max-width": {
           "description": "Sets the maximum horizontal size of the widget. The widget will shrink to fit shorter content.",
-          "label": "Maximum width"
+          "label": "Maximum Width"
         },
         "scrolling-mode": {
           "description": "Control when text scrolling is enabled for long window titles.",
@@ -28,13 +28,13 @@
         },
         "use-fixed-width": {
           "description": "When enabled, the widget will always use the maximum width instead of dynamically adjusting to content.",
-          "label": "Use fixed width"
+          "label": "Use Fixed Width"
         }
       },
       "audio-visualizer": {
         "color-name": {
           "description": "Select the color for the visualizer.",
-          "label": "Fill color"
+          "label": "Fill Color"
         },
         "hide-when-idle": {
           "description": "When enabled, the visualizer is hidden unless a player is actively playing.",
@@ -46,11 +46,6 @@
         }
       },
       "battery": {
-        "device": {
-          "default": "Default (Display Device)",
-          "description": "Select which battery device to display.",
-          "label": "Battery device"
-        },
         "display-mode": {
           "description": "Choose how you'd like this value to appear.",
           "label": "Display mode"
@@ -102,13 +97,9 @@
       "control-center": {
         "browse-file": "Browse File",
         "browse-library": "Browse Library",
-        "color-selection": {
-          "description": "Apply theme colors to icons.",
-          "label": "Select Color"
-        },
-        "enable-colorization": {
-          "description": "Enable colorization for the control center icon, applying theme colors.",
-          "label": "Enable Colorization"
+        "colorize-distro-logo": {
+          "description": "Apply theme colors to your distribution logo.",
+          "label": "Colorize distro logo"
         },
         "icon": {
           "description": "Select an icon from the library or a custom file.",
@@ -128,7 +119,7 @@
         },
         "display-command-output": {
           "description": "Enter a command to run at a regular interval. The first line of its output will be displayed as text.",
-          "label": "Display command output",
+          "label": "Display Command Output",
           "stream-description": "Enter a command to run continuously."
         },
         "dynamic-text": "Dynamic text",
@@ -142,11 +133,11 @@
           "update-text": "Update displayed text on left-click"
         },
         "max-text-length-horizontal": {
-          "description": "Maximum number of characters to show in horizontal bar (0 to hide text).",
+          "description": "Maximum number of characters to show in horizontal bar (0 to hide text)",
           "label": "Max text length (horizontal)"
         },
         "max-text-length-vertical": {
-          "description": "Maximum number of characters to show in vertical bar (0 to hide text).",
+          "description": "Maximum number of characters to show in vertical bar (0 to hide text)",
           "label": "Max text length (vertical)"
         },
         "middle-click": {
@@ -172,7 +163,7 @@
           "label": "Stream"
         },
         "wheel": {
-          "description": "Command to execute when the scroll wheel is used.\nUse $delta for the scroll wheel delta in the command.",
+          "description": "Command to execute when the scroll wheel is used.\nUse $delta for the scroll wheel delta in the command",
           "label": "Scroll wheel",
           "update-text": "Update displayed text on scroll"
         },
@@ -181,7 +172,7 @@
           "label": "Wheel down command"
         },
         "wheel-mode-separate": {
-          "description": "Enable separate commands for wheel up and down.",
+          "description": "Enable separate commands for wheel up and down",
           "label": "Separate wheel commands"
         },
         "wheel-up": {
@@ -202,15 +193,15 @@
       "lock-keys": {
         "browse": "Browse",
         "show-caps-lock": {
-          "description": "Display Caps Lock status.",
+          "description": "Display caps lock status.",
           "label": "Caps Lock"
         },
         "show-num-lock": {
-          "description": "Display Num Lock status.",
+          "description": "Display num lock status.",
           "label": "Num Lock"
         },
         "show-scroll-lock": {
-          "description": "Display Scroll Lock status.",
+          "description": "Display scroll lock status.",
           "label": "Scroll Lock"
         }
       },
@@ -221,7 +212,7 @@
         },
         "max-width": {
           "description": "Sets the maximum horizontal size of the widget. The widget will shrink to fit shorter content.",
-          "label": "Maximum width"
+          "label": "Maximum Width"
         },
         "no-active-player": "No active player",
         "scrolling-mode": {
@@ -246,7 +237,7 @@
         },
         "use-fixed-width": {
           "description": "When enabled, the widget will always use the maximum width instead of dynamically adjusting to content.",
-          "label": "Use fixed width"
+          "label": "Use Fixed Width"
         },
         "visualizer-type": {
           "description": "Choose the style of audio visualizer to display.",
@@ -275,11 +266,14 @@
       },
       "spacer": {
         "width": {
-          "description": "Spacing width in pixels.",
+          "description": "Spacing width in pixels",
           "label": "Width"
         }
       },
       "system-monitor": {
+        "cpu-critical-threshold": {
+          "label": "CPU Usage (Critical)"
+        },
         "cpu-temperature": {
           "description": "Show CPU temperature readings if available.",
           "label": "CPU temperature"
@@ -288,9 +282,24 @@
           "description": "Display current CPU usage percentage.",
           "label": "CPU usage"
         },
+        "cpu-warning-threshold": {
+          "label": "CPU Usage (Warning)"
+        },
+        "disk-critical-threshold": {
+          "label": "Storage Space (Critical)"
+        },
         "disk-path": {
           "description": "Select which disk mount point to monitor.",
           "label": "Disk path"
+        },
+        "disk-warning-threshold": {
+          "label": "Storage Space (Warning)"
+        },
+        "mem-critical-threshold": {
+          "label": "Memory Usage (Critical)"
+        },
+        "mem-warning-threshold": {
+          "label": "Memory Usage (Warning)"
         },
         "memory-percentage": {
           "description": "Show memory usage as a percentage instead of absolute values.",
@@ -307,12 +316,22 @@
         "storage-usage": {
           "description": "Show disk space usage information.",
           "label": "Storage usage"
+        },
+        "temp-critical-threshold": {
+          "label": "CPU Temperature (Critical)"
+        },
+        "temp-warning-threshold": {
+          "label": "CPU Temperature (Warning)"
+        },
+        "thresholds": {
+          "description": "Set thresholds for system metric alerts. Highlights when exceeded.",
+          "header": "Threshold Settings"
         }
       },
       "taskbar": {
         "colorize-icons": {
           "description": "Apply theme colors to taskbar icons.",
-          "label": "Colorize icons"
+          "label": "Colorize Icons"
         },
         "hide-mode": {
           "description": "Controls how the widget behaves when there are no matching windows.",
@@ -336,11 +355,11 @@
       "tray": {
         "colorize-icons": {
           "description": "Apply theme colors to tray icons.",
-          "label": "Colorize icons"
+          "label": "Colorize Icons"
         },
         "drawer-enabled": {
           "description": "When enabled, unpinned tray items are shown in a drawer panel. When disabled, all tray items are shown inline.",
-          "label": "Enable drawer"
+          "label": "Enable Drawer"
         }
       },
       "volume": {
@@ -356,7 +375,7 @@
         },
         "follow-focused-screen": {
           "description": "Display workspaces from the currently focused screen, rather than the screen where the bar is located.",
-          "label": "Follow focused screen"
+          "label": "Follow Focused Screen"
         },
         "hide-unoccupied": {
           "description": "Don't display workspaces without windows.",
@@ -364,7 +383,7 @@
         },
         "label-mode": {
           "description": "Choose how workspace labels are displayed.",
-          "label": "Label mode"
+          "label": "Label Mode"
         }
       }
     }
@@ -379,7 +398,7 @@
     "health": "Health: {percent}%",
     "idle": "Idle",
     "inhibit-idle-description": "Keeps the system awake.",
-    "inhibit-idle-label": "Keep Awake",
+    "inhibit-idle-label": "Keep awake",
     "no-battery-detected": "No battery detected",
     "panel-title": "Battery",
     "plugged-in": "Plugged in",
@@ -393,7 +412,6 @@
       "blocked": "Blocked",
       "connect": "Connect",
       "connected-devices": "Connected devices",
-      "connecting": "Connecting...",
       "disabled": "Bluetooth is disabled",
       "disconnect": "Disconnect",
       "enable-message": "Enable Bluetooth to see available devices.",
@@ -452,14 +470,7 @@
     }
   },
   "clock": {
-    "tooltip": "Clock"
-  },
-  "common": {
-    "add": "Add",
-    "apply": "Apply",
-    "cancel": "Cancel",
-    "close": "Close",
-    "save": "Save"
+    "tooltip": "Open calendar"
   },
   "context-menu": {
     "activate-app": "Activate {app}",
@@ -501,20 +512,6 @@
     "unknown": "Unknown"
   },
   "launcher": {
-    "categories": {
-      "all": "All",
-      "audiovideo": "Audio & Video",
-      "chat": "Chat",
-      "development": "Development",
-      "education": "Education",
-      "game": "Games",
-      "graphics": "Graphics",
-      "misc": "Misc",
-      "network": "Network",
-      "office": "Office",
-      "system": "System",
-      "webbrowser": "Web Browser"
-    },
     "pin": "Pin to dock",
     "unpin": "Unpin from dock"
   },
@@ -533,12 +530,6 @@
       "description": "Your notifications will show up here as they arrive.",
       "no-notifications": "No notifications",
       "title": "Notifications"
-    },
-    "range": {
-      "all": "All",
-      "earlier": "Earlier",
-      "today": "Today",
-      "yesterday": "Yesterday"
     },
     "time": {
       "diffD": "1 day ago",
@@ -567,7 +558,6 @@
     },
     "colors": {
       "error": "Error",
-      "none": "None",
       "onSurface": "On Surface",
       "primary": "Primary",
       "secondary": "Secondary",
@@ -593,17 +583,17 @@
     "display-mode": {
       "always-hide": "Always hide",
       "always-show": "Always show",
-      "force-open": "Force open",
+      "force-open": "Force Open",
       "on-hover": "On hover"
     },
     "frame-rates": {
       "fps": "{fps} FPS"
     },
     "hide-modes": {
-      "hidden": "Hide when empty",
-      "idle": "Hide when idle",
-      "transparent": "Transparent when empty",
-      "visible": "Always visible"
+      "hidden": "Hide When Empty",
+      "idle": "Hide When Idle",
+      "transparent": "Transparent When Empty",
+      "visible": "Always Visible"
     },
     "launcher": {
       "position": {
@@ -653,9 +643,9 @@
       }
     },
     "scrolling-modes": {
-      "always": "Scroll always",
-      "hover": "Scroll on hover",
-      "never": "Never scroll"
+      "always": "Scroll Always",
+      "hover": "Scroll On Hover",
+      "never": "Never Scroll"
     },
     "shadow-direction": {
       "bottom": "Below",
@@ -680,7 +670,7 @@
     },
     "workspace-labels": {
       "index": "Index",
-      "index+name": "Index and name",
+      "index+name": "Index and Name",
       "name": "Name",
       "none": "None"
     }
@@ -720,7 +710,14 @@
     "emoji": "Emoji picker",
     "emoji-loading": "Loading emojis...",
     "emoji-loading-description": "Please wait",
-    "emoji-search-description": "Search and copy emojis"
+    "emoji-search-description": "Search and copy emojis",
+    "quicksearch": "Quick search",
+    "quicksearch-available": "Available shortcuts",
+    "quicksearch-enter-query": "Enter a search term for {target}",
+    "quicksearch-enter-or-home": "Space: add search text • Enter: open {target}",
+    "quicksearch-hint": "Type !{shortcut} <query> to search {target}",
+    "quicksearch-open": "Open in browser",
+    "quicksearch-unknown": "Unknown shortcut !{shortcut}"
   },
   "quickSettings": {
     "bluetooth": {
@@ -729,7 +726,7 @@
         "enabled": "Bluetooth"
       },
       "tooltip": {
-        "action": "Bluetooth"
+        "action": "Click to manage Bluetooth devices"
       }
     },
     "keepAwake": {
@@ -738,7 +735,7 @@
         "enabled": "Keep Awake"
       },
       "tooltip": {
-        "action": "Keep Awake"
+        "action": "Click to toggle keep awake mode"
       }
     },
     "nightLight": {
@@ -748,7 +745,7 @@
         "forced": "Night Light"
       },
       "tooltip": {
-        "action": "Night Light"
+        "action": "Click to cycle Night Light mode\nRight click: Open settings"
       }
     },
     "notifications": {
@@ -757,7 +754,7 @@
         "enabled": "Notifications"
       },
       "tooltip": {
-        "action": "Notifications"
+        "action": "Left click: Open notification history\nRight click: Open context menu"
       }
     },
     "powerProfile": {
@@ -765,7 +762,7 @@
         "unavailable": "Power Profile"
       },
       "tooltip": {
-        "action": "Power profile",
+        "action": "Click to cycle power profile",
         "disabled": "Install power-profiles-daemon to use power profiles"
       }
     },
@@ -775,23 +772,23 @@
         "stopped": "Record"
       },
       "tooltip": {
-        "action": "Screen recorder"
+        "action": "Click to start/stop screen recording"
       }
     },
     "wallpaperSelector": {
       "label": "Wallpaper",
       "tooltip": {
-        "action": "Wallpaper selector"
+        "action": "Left click: Open wallpaper selector\nRight click: Set random wallpaper"
       }
     },
     "wifi": {
       "label": {
-        "disconnected": "Wi-Fi disconnected",
+        "disconnected": "Wi-Fi Disconnected",
         "ethernet": "Ethernet",
         "wifi": "Wi-Fi"
       },
       "tooltip": {
-        "action": "Wi-Fi"
+        "action": "Click to manage Wi-Fi connections"
       }
     }
   },
@@ -817,8 +814,6 @@
       },
       "noctalia": {
         "download-latest": "Download latest release",
-        "git-commit": "Git commit:",
-        "git-commit-loading": "Loading...",
         "installed-version": "Installed version:",
         "latest-version": "Latest version:",
         "section": {
@@ -846,7 +841,7 @@
       },
       "external-mixer": {
         "description": "Enter the command or application path to launch when activating the external audio mixer feature.",
-        "label": "External audio mixer command",
+        "label": "External Audio Mixer Command",
         "placeholder": "pwvucontrol || pavucontrol"
       },
       "media": {
@@ -977,7 +972,7 @@
       },
       "widgets": {
         "section": {
-          "description": "Drag widgets to change their order. Use the right-click menu to transfer widgets between sections or remove them.",
+          "description": "Drag and drop widgets to reorder them. Badges indicate usage: [L]eft, [C]enter, [R]ight.",
           "label": "Widgets positioning"
         }
       }
@@ -1008,25 +1003,25 @@
       },
       "dark-mode": {
         "mode": {
-          "description": "Enables automatic switching between Light and Dark Mode.",
-          "label": "Dark Mode schedule",
+          "description": "Enables automatic switching between light and dark mode.",
+          "label": "Dark mode schedule",
           "location": "Location",
           "manual": "Manual",
           "off": "Off"
         },
         "switch": {
           "description": "Switches to a darker theme for easier viewing at night.",
-          "label": "Dark Mode"
+          "label": "Dark mode"
         }
       },
       "delete": {
         "error": {
           "description": "Failed to delete {scheme}",
-          "title": "Delete failed"
+          "title": "Delete Failed"
         },
         "success": {
           "description": "Successfully deleted {scheme}",
-          "title": "Color scheme deleted"
+          "title": "Color Scheme Deleted"
         }
       },
       "download": {
@@ -1043,14 +1038,14 @@
           "no-files": "No files found for scheme",
           "parse-failed": "Failed to parse API response: {error}",
           "rate-limit": "GitHub API rate limit exceeded",
-          "title": "Download failed"
+          "title": "Download Failed"
         },
         "fetching": "Fetching available color schemes...",
         "installed": "Installed",
         "refresh": "Refresh",
         "success": {
           "description": "Successfully downloaded {scheme}",
-          "title": "Color scheme downloaded"
+          "title": "Color Scheme Downloaded"
         },
         "title": "Download Color Schemes"
       },
@@ -1065,35 +1060,27 @@
         }
       },
       "templates": {
-        "compositors": {
-          "description": "Compositor theming.",
-          "label": "Compositors",
-          "niri": {
-            "description": "Write {filepath}. Requires niri v25.11+",
-            "description-missing": "Requires {app} to be installed"
-          }
-        },
         "misc": {
-          "description": "Create your own Templates",
-          "label": "Advanced",
+          "description": "Additional configuration options.",
+          "label": "Misc",
           "user-templates": {
-            "description": "Only enable if you know what you are doing, refer to our online documentation",
-            "label": "Enable user templates"
+            "description": "Enable user-defined Matugen config. A template file will be created at ~/.config/noctalia/user-templates.toml on first enable",
+            "label": "User templates"
           }
         },
         "programs": {
           "cava": {
-            "description": "Write {filepath}",
+            "description": "Write {filepath}.",
             "description-missing": "Requires {app} to be installed"
           },
           "code": {
-            "description": "Write {filepath}. Hyprluna theme needs to be installed and activated manually",
-            "description-missing": "No Code client detected. Install VSCode or VSCodium"
+            "description": "Write {filepath}. Hyprluna theme needs to be installed and activated manually.",
+            "description-missing": "No Code client detected. Install VSCode or VSCodium."
           },
           "description": "Application-specific theming.",
           "discord": {
-            "description": "Write {filepath} for {client}. Hyprluna theme needs to be activated manually",
-            "description-missing": "No Discord client detected. Install vencord, vesktop, webcord, armcord, equibop, lightcord, or dorion"
+            "description": "Write {filepath} for {client}. Hyprluna theme needs to be activated manually.",
+            "description-missing": "No Discord client detected. Install vencord, vesktop, webcord, armcord, equibop, lightcord, or dorion."
           },
           "fuzzel": {
             "description": "Write {filepath} and reload",
@@ -1105,11 +1092,11 @@
             "description-missing": "Requires {app} to be installed"
           },
           "spicetify": {
-            "description": "Write {filepath}. Comfy theme needs to be installed and activated manually",
+            "description": "Write {filepath}. Comfy theme needs to be installed and activated manually.",
             "description-missing": "Requires {app} to be installed"
           },
           "telegram": {
-            "description": "Write {filepath}",
+            "description": "Write {filepath}.",
             "description-missing": "Requires {app} to be installed"
           },
           "vicinae": {
@@ -1163,21 +1150,21 @@
           }
         }
       },
-      "title": "Color Scheme"
+      "title": "Color scheme"
     },
     "control-center": {
       "cards": {
         "section": {
-          "description": "Customize which controls appear in the control center and in what order.",
+          "description": "Customize which controls appear in the Control Center and in what order.",
           "label": "Cards"
         }
       },
       "position": {
-        "description": "Choose where the control center panel appears when opened.",
+        "description": "Choose where the Control Center panel appears when opened.",
         "label": "Position"
       },
       "section": {
-        "description": "Configure the control center panel positioning and behavior.",
+        "description": "Configure the Control Center panel positioning and behavior.",
         "label": "Appearance"
       },
       "shortcuts": {
@@ -1189,11 +1176,11 @@
           },
           "enable-on-state-logic": {
             "description": "Enable a second icon and 'hot' state based on a check command.",
-            "label": "Enable on-state logic"
+            "label": "Enable On-State Logic"
           },
           "general-tooltip-text": {
             "description": "General description for the button's tooltip.",
-            "label": "General tooltip text"
+            "label": "General Tooltip Text"
           },
           "icon": {
             "description": "Select an icon from the library.",
@@ -1201,29 +1188,29 @@
           },
           "on-clicked": {
             "description": "Command to execute when the button is left-clicked.",
-            "label": "Left click command"
+            "label": "Left Click Command"
           },
           "on-middle-clicked": {
             "description": "Command to execute when the button is middle-clicked.",
-            "label": "Middle click command"
+            "label": "Middle Click Command"
           },
           "on-right-clicked": {
             "description": "Command to execute when the button is right-clicked.",
-            "label": "Right click command"
+            "label": "Right Click Command"
           },
           "on-state-command": {
             "description": "Command to execute to check if the button should be in the 'on' state. Returns 0 for on, non-zero for off.",
-            "label": "On-state check command"
+            "label": "On State Check Command"
           },
           "on-state-icon": {
             "description": "The icon for the button when it's in the 'on' state.",
-            "label": "On-state icon"
+            "label": "On State Icon"
           },
           "state-checks": {
             "add": "Add State Check",
             "browse-icon": "Browse",
             "command": "Command to execute for this state check",
-            "label": "State checks",
+            "label": "State Checks",
             "remove": "Remove"
           },
           "tooltip": {
@@ -1236,7 +1223,7 @@
           "cancel": "Cancel"
         },
         "section": {
-          "description": "Drag widgets to change their order. Use the right-click menu to transfer widgets between sections or remove them.",
+          "description": "Configure and manage the shortcuts widgets.",
           "label": "Shortcuts widgets"
         },
         "sectionLeft": "Left",
@@ -1275,7 +1262,7 @@
         },
         "enable": {
           "description": "Apply a warm color filter to reduce blue light emission.",
-          "label": "Enable Night Light"
+          "label": "Enable night light"
         },
         "force-activation": {
           "description": "Ignores the schedule and applies the night filter immediately.",
@@ -1291,15 +1278,13 @@
         },
         "section": {
           "description": "Reduce blue light emission to help you sleep better and reduce eye strain.",
-          "label": "Night Light"
+          "label": "Night light"
         },
         "temperature": {
           "day": "Day",
-          "day-description": "Controls the temperature during daytime.",
           "description": "Set the color warmth for nighttime and daytime.",
           "label": "Color temperature",
-          "night": "Night",
-          "night-description": "Controls the temperature during nighttime."
+          "night": "Night"
         }
       },
       "title": "Display"
@@ -1339,7 +1324,7 @@
         }
       },
       "enabled": {
-        "description": "Show or hide the dock entirely.",
+        "description": "Show or hide the dock entirely",
         "label": "Enable dock"
       },
       "monitors": {
@@ -1390,21 +1375,20 @@
         "select": {
           "auto-detect": "Automatic",
           "description": "Select the language used in the application's interface.",
-          "label": "Application language"
+          "label": "Application Language"
         }
       },
       "launch-setup-wizard": "Launch the setup wizard",
       "profile": {
         "picture": {
           "description": "Your profile picture that appears throughout the interface.",
-          "label": "{user}'s profile picture"
+          "label": "{user}'s Profile picture"
         },
         "section": {
           "description": "Edit your user details and avatar.",
           "label": "Profile"
         },
-        "select-avatar": "Select avatar image",
-        "tooltip": "Profile picture"
+        "select-avatar": "Select avatar image"
       },
       "screen-corners": {
         "radius": {
@@ -1431,11 +1415,11 @@
       "info": {
         "command-info": {
           "description": "• Commands are executed via shell (sh -c)\n• Commands run in background (detached)\n• Test buttons execute with current values",
-          "label": "Hook command information"
+          "label": "Hook Command Information"
         },
         "parameters": {
-          "description": "• Wallpaper hook: $1 = wallpaper path, $2 = screen name\n• Theme toggle hook: $1 = true/false (Dark Mode state)",
-          "label": "Available parameters"
+          "description": "• Wallpaper Hook: $1 = wallpaper path, $2 = screen name\n• Theme Toggle Hook: $1 = true/false (dark mode state)",
+          "label": "Available Parameters"
         }
       },
       "system-hooks": {
@@ -1449,7 +1433,7 @@
         }
       },
       "theme-changed": {
-        "description": "Command to be executed when theme toggles between Dark and Light Mode.",
+        "description": "Command to be executed when theme toggles between dark and light mode.",
         "label": "Theme changed",
         "placeholder": "e.g., notify-send \"Theme\" \"Toggled\""
       },
@@ -1511,17 +1495,17 @@
     },
     "location": {
       "calendar": {
+        "banner": {
+          "label": "Header"
+        },
+        "calendar": {
+          "label": "Calendar"
+        },
         "cards": {
           "section": {
             "description": "Organize and enable/disable cards in the calendar panel.",
             "label": "Calendar cards"
           }
-        },
-        "header": {
-          "label": "Calendar Header"
-        },
-        "month": {
-          "label": "Calendar Month"
         }
       },
       "date-time": {
@@ -1547,7 +1531,7 @@
           "label": "Use analog style clock"
         },
         "week-numbers": {
-          "description": "Displays the week of the year (e.g., week 38) in the calendar.",
+          "description": "Displays the week of the year (e.g., Week 38) in the calendar.",
           "label": "Show week numbers"
         }
       },
@@ -1558,7 +1542,7 @@
           "placeholder": "Enter the location name"
         },
         "section": {
-          "description": "Get accurate weather and Night Light scheduling by setting your location.",
+          "description": "Get accurate weather and night light scheduling by setting your location.",
           "label": "Your location"
         }
       },
@@ -1599,7 +1583,7 @@
         "description": "Show the option 'hibernate' in the energy actions.",
         "label": "Show hibernate"
       },
-      "title": "Lock Screen"
+      "title": "Lock screen"
     },
     "network": {
       "bluetooth": {
@@ -1654,14 +1638,14 @@
         },
         "do-not-disturb": {
           "description": "Disable all notification popups when enabled.",
-          "label": "Do Not Disturb"
+          "label": "Do not disturb"
         },
         "enable-osd": {
           "description": "Show volume and brightness changes in real-time.",
-          "label": "Enable on-screen display"
+          "label": "Enable on screen display"
         },
         "enabled": {
-          "description": "Enable or disable the notification daemon, requires a restart of Noctalia shell.",
+          "description": "Enable or disable the notification daemon, requires a restart of noctalia-shell.",
           "label": "Enable notifications"
         },
         "location": {
@@ -1707,7 +1691,7 @@
       },
       "enabled": {
         "description": "Show volume and brightness changes in real-time.",
-        "label": "Enable on-screen display"
+        "label": "Enable on screen display"
       },
       "location": {
         "description": "Where on-screen displays appear.",
@@ -1740,7 +1724,7 @@
           "label": "Lock keys"
         },
         "section": {
-          "description": "Select the events that trigger the OSD.",
+          "description": "Select the events that trigger the OSD. If no events are selected, all available events will trigger the OSD.",
           "label": "OSD trigger events"
         },
         "volume": {
@@ -1748,67 +1732,6 @@
           "label": "Output volume"
         }
       }
-    },
-    "plugins": {
-      "available": {
-        "description": "Browse and install plugins from configured sources.",
-        "label": "Available plugins",
-        "no-plugins-description": "Check your plugin sources or refresh the list.",
-        "no-plugins-label": "No plugins available"
-      },
-      "filter": {
-        "all": "All",
-        "downloaded": "Downloaded",
-        "not-downloaded": "Not Downloaded"
-      },
-      "install": "Install",
-      "install-error": "Failed to install: {error}",
-      "install-success": "Successfully installed {plugin}",
-      "installed": {
-        "description": "Manage and configure all locally installed plugins.",
-        "label": "Installed plugins",
-        "no-plugins-description": "Install plugins from the Available Plugins section below.",
-        "no-plugins-label": "No plugins installed"
-      },
-      "installing": "Installing {plugin}...",
-      "plugin-settings-title": "{plugin} Settings",
-      "refresh": {
-        "refreshing": "Refreshing plugins list...",
-        "tooltip": "Refresh available plugins"
-      },
-      "settings": {
-        "tooltip": "Plugin settings"
-      },
-      "settings-error-not-loaded": "Plugin not loaded",
-      "settings-saved": "Plugin settings saved",
-      "sources": {
-        "add-custom": "Add custom repository",
-        "add-dialog": {
-          "description": "Add a GitHub repository as a plugin source.",
-          "error": "Failed to add plugin source",
-          "name": "Repository name",
-          "name-placeholder": "My Custom Plugins",
-          "success": "Plugin source added successfully",
-          "title": "Add plugin source",
-          "url": "Repository URL"
-        },
-        "description": "Manage plugin repositories where plugins are downloaded from.",
-        "label": "Plugin sources",
-        "placeholder": "My cool repository",
-        "remove": {
-          "tooltip": "Remove plugin source"
-        }
-      },
-      "title": "Plugins",
-      "uninstall": "Uninstall",
-      "uninstall-dialog": {
-        "description": "Are you sure you want to uninstall {plugin}? This will remove all plugin data.",
-        "title": "Uninstall plugin"
-      },
-      "uninstall-error": "Failed to uninstall: {error}",
-      "uninstall-success": "Successfully uninstalled {plugin}",
-      "uninstall.tooltip": "Uninstall plugin",
-      "uninstalling": "Uninstalling {plugin}..."
     },
     "screen-recorder": {
       "audio": {
@@ -1829,7 +1752,7 @@
         "output-folder": {
           "description": "Folder where screen recordings will be saved.",
           "label": "Output folder",
-          "tooltip": "Output folder"
+          "tooltip": "Browse for output folder"
         },
         "section": {
           "description": "Manage screen recording output and content.",
@@ -1841,7 +1764,7 @@
           "label": "Show cursor"
         }
       },
-      "title": "Screen Recorder",
+      "title": "Screen recorder",
       "video": {
         "color-range": {
           "description": "Limited is recommended for better compatibility.",
@@ -1880,103 +1803,80 @@
       },
       "entries": {
         "section": {
-          "description": "Customize which power actions appear in the session menu and in what order.",
+          "description": "Customize which power actions appear in the Session Menu and in what order.",
           "label": "Power actions"
         }
       },
-      "entry-settings": {
-        "command": {
-          "description": "Custom command to execute for this action. Leave empty to use the default system command.",
-          "label": "Command",
-          "placeholder": "e.g., systemctl poweroff"
-        },
-        "default-command": {
-          "lock": "Internal lock screen (no command)",
-          "logout": "Internal logout (no command)"
-        },
-        "default-info": {
-          "description": "If no custom command is specified, the default system command will be used.",
-          "label": "Default command"
-        },
-        "title": "Configure {entry}",
-        "tooltip": "Configure command"
-      },
       "general": {
         "section": {
-          "description": "Configure the session menu panel behavior and appearance.",
+          "description": "Configure the Session Menu panel behavior and appearance.",
           "label": "General"
         }
       },
       "position": {
-        "description": "Choose where the session menu panel appears when opened.",
+        "description": "Choose where the Session Menu panel appears when opened.",
         "label": "Position"
       },
       "show-header": {
-        "description": "Display the title and close button at the top of the session menu.",
+        "description": "Display the title and close button at the top of the Session Menu.",
         "label": "Show header"
       },
       "title": "Session Menu"
     },
     "system-monitor": {
       "cpu-critical-threshold": {
-        "label": "Critical threshold"
+        "label": "Critical Threshold"
       },
       "cpu-section": {
-        "label": "CPU usage"
+        "label": "CPU Usage"
       },
       "cpu-warning-threshold": {
-        "label": "Warning threshold"
+        "label": "Warning Threshold"
       },
       "critical-color": {
-        "label": "Critical color"
+        "label": "Critical Color"
       },
       "custom-highlight-colors-title": {
         "label": "Custom highlight colors"
       },
       "disk-critical-threshold": {
-        "label": "Critical threshold"
+        "label": "Critical Threshold"
       },
       "disk-section": {
-        "label": "Disk usage"
+        "label": "Disk Usage"
       },
       "disk-warning-threshold": {
-        "label": "Warning threshold"
+        "label": "Warning Threshold"
       },
       "general": {
         "section": {
-          "description": "Configure the system monitor behavior and appearance.",
+          "description": "Configure the System Monitor behavior and appearance.",
           "label": "General"
         }
       },
       "highlight-colors-section": {
-        "label": "Highlight colors"
+        "label": "Highlight Colors"
       },
       "mem-critical-threshold": {
-        "label": "Critical threshold"
+        "label": "Critical Threshold"
       },
       "mem-warning-threshold": {
-        "label": "Warning threshold"
+        "label": "Warning Threshold"
       },
       "memory-section": {
-        "label": "Memory usage"
-      },
-      "network-section": {
-        "label": "Network"
-      },
-      "polling-interval": {
-        "label": "Polling interval"
+        "label": "Memory Usage"
       },
       "temp-critical-threshold": {
-        "label": "Critical threshold"
+        "label": "Critical Threshold"
       },
       "temp-warning-threshold": {
-        "label": "Warning threshold"
+        "label": "Warning Threshold"
       },
       "temperature-section": {
-        "label": "CPU temperature"
+        "label": "CPU Temperature"
       },
       "thresholds-section": {
-        "description": "Adjust warning/critical thresholds and polling intervals for each system metric.",
+        "description": "Set thresholds for system metrics, values above these will be highlighted.",
         "label": "Thresholds"
       },
       "title": "System Monitor",
@@ -1985,7 +1885,7 @@
         "label": "Use custom highlight colors"
       },
       "warning-color": {
-        "label": "Warning color"
+        "label": "Warning Color"
       }
     },
     "user-interface": {
@@ -1995,22 +1895,17 @@
       },
       "animation-disable": {
         "description": "Disable all animations for a faster, more responsive experience.",
-        "label": "Disable UI animations"
+        "label": "Disable UI Animations"
       },
       "animation-speed": {
         "description": "Adjust global animation speed.",
         "label": "Animation speed",
         "reset": "Reset animation speed"
       },
-      "box-border-radius": {
-        "description": "Adjusts the corner roundness of major layout sections, such as sidebars, cards, and content panels.",
-        "label": "Container Radius",
-        "reset": "Reset container radius"
-      },
-      "control-border-radius": {
-        "description": "Controls the curvature of interactive elements, including buttons, toggles, and text fields.",
-        "label": "Input Radius",
-        "reset": "Reset input radius"
+      "border-radius": {
+        "description": "Controls the corner roundness of windows, buttons, and other elements.",
+        "label": "Border radius",
+        "reset": "Reset border radius"
       },
       "dim-desktop": {
         "description": "Dim the desktop when panels or menus are open.",
@@ -2022,7 +1917,7 @@
         "reset": "Reset dimmed desktop opacity"
       },
       "panel-background-opacity": {
-        "description": "Set the background opacity for all panels (launcher, control center, settings, etc.).",
+        "description": "Set the background opacity for all panels (Launcher, Control Center, Settings, etc.).",
         "label": "Panel background opacity"
       },
       "panels-attached-to-bar": {
@@ -2054,7 +1949,7 @@
         },
         "label": "Drop shadows"
       },
-      "title": "User Interface",
+      "title": "User interface",
       "tooltips": {
         "description": "Enable or disable tooltips throughout the interface.",
         "label": "Show tooltips"
@@ -2104,59 +1999,48 @@
         }
       },
       "video": {
+        "pause-on-windows": {
+          "description": "Pause animated wallpapers whenever application windows are visible on the screen.",
+          "label": "Pause when windows are open"
+        },
+        "pause-on-windows-mute": {
+          "description": "Instead of pausing, keep playback running and mute wallpaper audio when windows are visible.",
+          "label": "Mute instead of pausing"
+        },
+        "pause-on-windows-whitelist": {
+          "description": "When mute instead of pausing is enabled, windows matching these keywords mute wallpaper audio; others pause playback.",
+          "label": "Mute whitelist",
+          "placeholder": "kitty, neovide"
+        },
+        "pause-on-windows-blacklist": {
+          "description": "Windows whose app id or title contains these keywords will not pause or mute the wallpaper.",
+          "label": "Pause/mute blacklist",
+          "placeholder": "kitty, neovide"
+        },
+        "playback-enabled": {
+          "description": "Show animated/video wallpapers. When disabled, videos render as still previews.",
+          "label": "Enable animated wallpapers"
+        },
+        "audio-enabled": {
+          "description": "Expose wallpaper audio as a single PipeWire stream for video wallpapers on all monitors.",
+          "label": "Enable wallpaper audio"
+        },
+        "steam-integration": {
+          "description": "Enable Steam Workshop Wallpaper Engine integration when the folder is detected.",
+          "label": "Wallpaper Engine integration"
+        },
+        "steam-integration-unavailable": "Install Wallpaper Engine via Steam to enable integration.",
         "audio-muted": {
-          "description": "Silence wallpaper audio everywhere.",
+          "description": "Silence wallpaper videos without stopping playback.",
           "label": "Mute wallpaper audio"
         },
         "audio-volume": {
-          "description": "Adjust the audio level for video wallpapers.",
+          "description": "Set the default volume for the wallpaper audio stream.",
           "label": "Wallpaper volume"
         },
-        "blacklist": {
-          "description": "Never pause or mute when these windows are present (matches app ID, class, title, or name).",
-          "label": "Pause blacklist",
-          "placeholder": "e.g., mpv"
-        },
-        "lockscreen": {
-          "mute": {
-            "description": "Mute wallpaper audio while the lock screen is visible.",
-            "label": "Mute on lock screen"
-          },
-          "playback": {
-            "description": "Continue rendering animated wallpapers on the lock screen; disable to pause them there.",
-            "label": "Play on lock screen"
-          }
-        },
-        "mute-instead": {
-          "description": "Mute wallpaper audio instead of pausing video when windows are open.",
-          "label": "Mute instead of pausing"
-        },
-        "pause-on-windows": {
-          "description": "Pause animated wallpapers while windows are present on the same workspace.",
-          "label": "Pause when windows are on this workspace"
-        },
-        "playback-enabled": {
-          "description": "Play video and GIF wallpapers instead of static previews.",
-          "label": "Enable animated wallpapers"
-        },
-        "remove-entry": "Remove entry",
         "section": {
+          "description": "Shared playback across monitors with one controllable audio stream.",
           "label": "Video wallpaper"
-        },
-        "steam-integration": {
-          "description": "Enable Steam Workshop wallpapers from Wallpaper Engine.",
-          "error": "Steam Wallpaper Engine folders not found.",
-          "label": "Steam Wallpaper Engine integration"
-        },
-        "use-steam": {
-          "description": "Use Wallpaper Engine files as a wallpaper source.",
-          "disabled-by-wallhaven": "Wallhaven wallpapers are active; disable Wallhaven to use Steam Workshop content.",
-          "label": "Use Steam wallpapers"
-        },
-        "whitelist": {
-          "description": "Keep wallpaper audio playing for matching windows (app ID, class, title, or name).",
-          "label": "Audio mute whitelist",
-          "placeholder": "e.g., kitty"
         }
       },
       "settings": {
@@ -2171,7 +2055,7 @@
         "folder": {
           "description": "Path to your main wallpaper folder.",
           "label": "Wallpaper folder",
-          "tooltip": "Wallpaper folder"
+          "tooltip": "Browse for wallpaper folder"
         },
         "hide-wallpaper-filenames": {
           "description": "Hide wallpaper filenames in the selector.",
@@ -2180,7 +2064,7 @@
         "monitor-specific": {
           "description": "Set a different wallpaper folder for each monitor.",
           "label": "Monitor-specific directories",
-          "tooltip": "Monitor wallpaper folder"
+          "tooltip": "Browse for wallpaper folder"
         },
         "recursive-search": {
           "description": "Also search for wallpapers in subfolders of the wallpaper directory.",
@@ -2195,7 +2079,7 @@
         "selector": {
           "description": "Choose your wallpaper.",
           "label": "Wallpaper selector",
-          "tooltip": "Wallpaper selector"
+          "tooltip": "Open wallpaper selector"
         },
         "selector-position": {
           "description": "Choose where the wallpaper selector panel appears.",
@@ -2208,7 +2092,7 @@
   "setup": {
     "appearance": {
       "header": "Appearance",
-      "subheader": "Choose Dark Mode and color sources (Matugen or predefined)."
+      "subheader": "Choose dark mode and color sources (Matugen or predefined)."
     },
     "customize": {
       "header": "Customize your experience",
@@ -2231,7 +2115,7 @@
       "subheader": "Set the mood with a beautiful background."
     },
     "welcome": {
-      "note": "Just a few basics to get you started - full options are in the settings"
+      "note": "Just a few basics to get you started - full options are in Settings"
     }
   },
   "system": {
@@ -2243,7 +2127,7 @@
     "scaling-percentage": "{percentage}%",
     "signal-strength": "{signal}%",
     "unknown": "Unknown",
-    "unknown-app": "Unknown app",
+    "unknown-app": "Unknown App",
     "unknown-layout": "Unknown",
     "unknown-version": "Unknown",
     "uptime": "Uptime: {uptime}",
@@ -2255,7 +2139,7 @@
     "airplane-mode": {
       "disabled": "Disabled",
       "enabled": "Enabled",
-      "title": "Airplane Mode"
+      "title": "Airplane mode"
     },
     "battery": {
       "low": "Low battery",
@@ -2269,15 +2153,10 @@
       "unavailable": "Clipboard history unavailable",
       "unavailable-desc": "The 'cliphist' application is not installed. Please install it to use clipboard history features."
     },
-    "dark-mode": {
-      "dark-mode": "Dark Mode",
-      "enabled": "Enabled",
-      "light-mode": "Light Mode"
-    },
     "do-not-disturb": {
-      "disabled": "Do Not Disturb disabled",
+      "disabled": "'Do not disturb' disabled",
       "disabled-desc": "Showing all notifications.",
-      "enabled": "Do Not Disturb enabled",
+      "enabled": "'Do not disturb' enabled",
       "enabled-desc": "You'll find these notifications in your history."
     },
     "internet": {
@@ -2298,8 +2177,8 @@
       "opened": "Ko-fi page opened in your browser"
     },
     "missing-control-center": {
-      "description": "The control center widget has been removed from the bar. To access it from the bar again, you will need to re-add the widget. You can open it with right clicking on the bar too.",
-      "label": "Last control center widget removed"
+      "description": "The Control Center widget has been removed from the bar. To access it from the bar again, you will need to re-add the widget. You can open it with right clicking on the bar too.",
+      "label": "Last Control Center widget removed"
     },
     "night-light": {
       "disabled": "Disabled",
@@ -2318,8 +2197,8 @@
       "profile-name": "\"{profile}\""
     },
     "recording": {
-      "failed-general": "Recorder exited with an error",
-      "failed-gpu": "gpu-screen-recorder exited unexpectedly",
+      "failed-general": "The recorder exited with an error.",
+      "failed-gpu": "gpu-screen-recorder exited unexpectedly.",
       "failed-start": "Failed to start recording",
       "no-portals": "Desktop portals not running",
       "no-portals-desc": "Start xdg-desktop-portal and a compositor portal (wlr/hyprland/gnome/kde).",
@@ -2330,7 +2209,7 @@
       "stopping": "Stopping recording…"
     },
     "theming-processor-failed": {
-      "desc-generic": "Encountered an error while processing templates.",
+      "desc-generic": "Encountered an error while processing templates",
       "title-matugen": "Matugen templating processing failed",
       "title-predefined": "Predefined color cheme processing failed"
     },
@@ -2354,70 +2233,64 @@
   "tooltips": {
     "add-widget": "Add widget",
     "bluetooth-devices": "Bluetooth devices",
-    "brightness-at": "Brightness: {brightness}%",
-    "cancel-timer": "Timer",
+    "brightness-at": "Brightness: {brightness}%\nScroll to modify brightness",
+    "cancel-timer": "Cancel timer",
     "clear-history": "Clear history",
-    "click-to-start-recording": "Screen recorder (start recording)",
-    "click-to-stop-recording": "Screen recorder (stop recording)",
-    "close": "Close button",
-    "connect-disconnect-devices": "Bluetooth device",
+    "click-to-start-recording": "Click to start recording",
+    "click-to-stop-recording": "Click to stop recording",
+    "close": "Close",
+    "connect-disconnect-devices": "Left click to connect\nRight click to forget",
     "delete-notification": "Delete notification",
-    "disable-keep-awake": "Keep Awake",
-    "do-not-disturb-disabled": "Do Not Disturb",
-    "do-not-disturb-enabled": "Do Not Disturb",
-    "enable-keep-awake": "Keep Awake",
+    "disable-keep-awake": "Click to disable keep awake.\nScroll to adjust timeout",
+    "do-not-disturb-disabled": "'Do not disturb' disabled",
+    "do-not-disturb-enabled": "'Do not disturb' enabled",
+    "enable-keep-awake": "Click to enable keep awake.\nScroll to adjust timeout",
     "forget-network": "Forget network",
-    "grid-view": "Grid view",
-    "hidden-files-hide": "Hidden files",
-    "hidden-files-show": "Hidden files",
-    "home": "Home directory",
-    "input-muted": "Microphone",
-    "keep-awake": "Keep Awake",
+    "home": "Home",
+    "input-muted": "Toggle input mute",
+    "keep-awake": "Keep awake",
     "keyboard-layout": "{layout} keyboard layout",
-    "list-view": "List view",
-    "manage-vpn": "VPN connections",
-    "manage-wifi": "Wi-Fi",
-    "microphone-volume-at": "Microphone volume: {volume}%",
-    "move-to-center-section": "Center section",
-    "move-to-left-section": "Left section",
-    "move-to-right-section": "Right section",
-    "next-media": "Next track",
+    "manage-vpn": "Manage VPN connections",
+    "manage-wifi": "Manage Wi-Fi",
+    "microphone-volume-at": "Microphone volume at {volume}%\nScroll to modify volume",
+    "move-to-center-section": "Move to center section",
+    "move-to-left-section": "Move to left section",
+    "move-to-right-section": "Move to right section",
+    "next-media": "Next media",
     "next-month": "Next month",
-    "night-light-disabled": "Night Light",
-    "night-light-enabled": "Night Light",
-    "night-light-forced": "Night Light",
-    "night-light-not-installed": "Night Light (not available)",
-    "noctalia-performance-disabled": "Noctalia performance mode",
-    "noctalia-performance-enabled": "Noctalia performance mode",
-    "open-control-center": "Control center",
-    "open-notification-history-disable-dnd": "Notification history",
-    "open-notification-history-enable-dnd": "Notification history",
-    "open-settings": "Settings",
-    "open-tray-dropdown": "System tray",
-    "open-wallpaper-selector": "Wallpaper selector",
-    "output-muted": "Audio output",
-    "pause": "Pause button",
-    "play": "Play button",
-    "power-profile": "{profile} power profile",
-    "previous-media": "Previous track",
+    "night-light-disabled": "Night light is disabled.\nLeft click to cycle mode\nRight click to access settings",
+    "night-light-enabled": "Night light is enabled.\nLeft click to cycle mode\nRight click to access settings",
+    "night-light-forced": "Night light is forced.\nLeft click to cycle mode\nRight click to access settings",
+    "night-light-not-installed": "Night light is not available\nwlsunset is not installed",
+    "noctalia-performance-disabled": "Noctalia performance mode is disabled\nLeft click to enable",
+    "noctalia-performance-enabled": "Noctalia performance mode is enabled\nLeft click to disable",
+    "open-control-center": "Open control center",
+    "open-notification-history-disable-dnd": "Open notification history\nRight click: Open context menu",
+    "open-notification-history-enable-dnd": "Open notification history\nRight click: Open context menu",
+    "open-settings": "Open settings",
+    "open-tray-dropdown": "Open tray dropdown",
+    "open-wallpaper-selector": "Open wallpaper selector",
+    "output-muted": "Toggle output mute",
+    "pause": "Pause",
+    "play": "Play",
+    "power-profile": "'{profile}' power profile",
+    "previous-media": "Previous media",
     "previous-month": "Previous month",
     "refresh": "Refresh",
     "refresh-devices": "Refresh devices",
     "refresh-wallhaven": "Refresh Wallhaven results",
     "refresh-wallpaper-list": "Refresh wallpaper list",
     "remove-widget": "Remove widget",
-    "screen-recorder-not-installed": "Screen recorder (not installed)",
-    "search": "Search",
-    "search-close": "Close search",
-    "session-menu": "Session menu",
-    "set-power-profile": "{profile} power profile",
-    "start-screen-recording": "Screen recorder",
-    "stop-screen-recording": "Screen recorder",
-    "switch-to-dark-mode": "Dark Mode",
-    "switch-to-light-mode": "Light Mode",
-    "up": "Parent directory",
-    "volume-at": "Output volume: {volume}%",
-    "wallpaper-selector": "Wallpaper selector",
+    "screen-recorder-not-installed": "Screen recorder is not installed",
+    "session-menu": "Session Menu",
+    "set-power-profile": "Set \"{profile}\" power profile",
+    "start-screen-recording": "Start screen recording",
+    "stop-screen-recording": "Stop screen recording",
+    "switch-to-dark-mode": "Switch to dark mode",
+    "switch-to-light-mode": "Switch to light mode",
+    "up": "Up",
+    "volume-at": "Output volume at {volume}%\nScroll to modify volume",
+    "wallpaper-selector": "Left click: Open wallpaper selector.\nRight click: Set random wallpaper",
     "widget-settings": "Widget settings"
   },
   "wallpaper": {
@@ -2440,6 +2313,9 @@
         "general": "General",
         "label": "Categories",
         "people": "People"
+      },
+      "generate-video-previews": {
+        "tooltip": "Generate previews for all video wallpapers in your folders"
       },
       "order": {
         "asc": "Ascending",
@@ -2473,7 +2349,6 @@
       "source": {
         "label": "Source",
         "local": "Local",
-        "steam": "Steam Workshop",
         "wallhaven": "Wallhaven"
       },
       "title": "Wallpaper Selector",
@@ -2593,7 +2468,7 @@
   },
   "wifi": {
     "panel": {
-      "available-networks": "Available networks",
+      "available-networks": "Available Networks",
       "connect": "Connect",
       "connected": "Connected",
       "disabled": "Wi-Fi is disabled",
@@ -2604,7 +2479,7 @@
       "forget": "Forget",
       "forget-network": "Forget this network?",
       "forgetting": "Forgetting...",
-      "known-networks": "Known networks",
+      "known-networks": "Known Networks",
       "no-networks": "No networks found",
       "password": "Password",
       "saved": "Saved",

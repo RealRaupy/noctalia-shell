@@ -1,7 +1,7 @@
 import QtQuick
+import QtMultimedia
 import Quickshell
 import Quickshell.Wayland
-import QtMultimedia
 import qs.Commons
 import qs.Services.Compositor
 import qs.Services.UI
@@ -23,10 +23,21 @@ Variants {
       property string transitionType: "fade"
       property real transitionProgress: 0
       property bool isStartupTransition: true
+      property string currentWallpaperPath: ""
+      property string currentWallpaperType: "image"
+      property string nextWallpaperType: "image"
+      property string pendingFallbackPath: ""
+      property bool wallpaperSuspended: false
+      property bool wallpaperMuteForWindows: false
+      property bool isPrimaryScreen: false
 
       readonly property real edgeSmoothness: Settings.data.wallpaper.transitionEdgeSmoothness
       readonly property var allTransitions: WallpaperService.allTransitions
       readonly property bool transitioning: transitionAnimation.running || fallbackTransitionAnimation.running
+      readonly property bool useShaderTransitions: currentWallpaperType === "image" && nextWallpaperType === "image"
+      property bool fallbackTransitioning: false
+      property bool keepFallbackVisible: false
+      readonly property bool fallbackTransitionActive: !useShaderTransitions && fallbackTransitioning
 
       // Wipe direction: 0=left, 1=right, 2=up, 3=down
       property real wipeDirection: 0
@@ -41,26 +52,8 @@ Variants {
 
       // Used to debounce wallpaper changes
       property string futureWallpaper: ""
-      property string currentWallpaperType: "image"
-      property string nextWallpaperType: "image"
-      property string currentWallpaperPath: ""
-      property bool useFallbackTransition: false
-      property bool fallbackTransitionActive: false
-      property real shaderProgress: useFallbackTransition ? fallbackTransitionProgress : transitionProgress
-      property var fallbackBaseLoader: currentFallback
-      property var fallbackOverlayLoader: nextFallback
-      readonly property var shaderSource1: useFallbackTransition ? fallbackBaseSource : currentWallpaper
-      readonly property var shaderSource2: useFallbackTransition ? fallbackOverlaySource : nextWallpaper
-      readonly property real shaderImageWidth1: getShaderSourceWidth(shaderSource1)
-      readonly property real shaderImageHeight1: getShaderSourceHeight(shaderSource1)
-      readonly property real shaderImageWidth2: getShaderSourceWidth(shaderSource2)
-      readonly property real shaderImageHeight2: getShaderSourceHeight(shaderSource2)
-      property bool lockScreenActive: PanelService.lockScreen ? PanelService.lockScreen.active : false
-      property real fallbackTransitionProgress: 0
-      property bool wallpaperSuspended: false
-      property bool wallpaperMuteForWindows: false
-      property int imageFillMode: getImageFillMode()
-      property int videoFillMode: getVideoFillMode()
+      // Render source that respects playback settings (may differ from futureWallpaper for videos)
+      property string futureWallpaperDisplay: ""
 
       // Fillmode default is "crop"
       property real fillMode: WallpaperService.getFillModeUniform()
@@ -70,36 +63,20 @@ Variants {
 
       Component.onDestruction: {
         transitionAnimation.stop();
-        fallbackTransitionAnimation.stop();
         debounceTimer.stop();
         shaderLoader.active = false;
         currentWallpaper.source = "";
         nextWallpaper.source = "";
       }
 
-      onFallbackTransitionProgressChanged: {
-        if (currentFallback.item) {
-          currentFallback.item.opacity = 1;
-          if (currentFallback.item.visualOpacity !== undefined) {
-            currentFallback.item.visualOpacity = 1;
-          }
-        }
-        if (nextFallback.item) {
-          nextFallback.item.opacity = 1;
-          if (nextFallback.item.visualOpacity !== undefined) {
-            nextFallback.item.visualOpacity = 1;
-          }
-        }
-      }
-
       Connections {
         target: Settings.data.wallpaper
         function onFillModeChanged() {
           fillMode = WallpaperService.getFillModeUniform();
-          imageFillMode = getImageFillMode();
-          videoFillMode = getVideoFillMode();
         }
-        function onOverviewEnabledChanged() {
+        function onVideoPlaybackEnabledChanged() {
+          futureWallpaperDisplay = getDisplaySource(futureWallpaper);
+          setWallpaperImmediate(futureWallpaperDisplay);
           updateWallpaperSuspension();
         }
         function onPauseVideoOnWindowsChanged() {
@@ -114,20 +91,8 @@ Variants {
         function onPauseVideoOnWindowsBlacklistChanged() {
           updateWallpaperSuspension();
         }
-        function onVideoPlaybackEnabledChanged() {
-          if (currentWallpaperPath !== "" && WallpaperService.isVideoFile(currentWallpaperPath)) {
-            futureWallpaper = currentWallpaperPath;
-            setWallpaperImmediate(getDisplaySource(currentWallpaperPath));
-          }
-        }
-      }
-
-      Connections {
-        target: PanelService.lockScreen
-        ignoreUnknownSignals: true
-        function onActiveChanged() {
-          lockScreenActive = PanelService.lockScreen && PanelService.lockScreen.active;
-          updateWallpaperSuspension();
+        function onVideoAudioModeChanged() {
+          updatePlaybackState();
         }
       }
 
@@ -139,18 +104,15 @@ Variants {
             // Update wallpaper display
             // Set wallpaper immediately on startup
             futureWallpaper = path;
+            futureWallpaperDisplay = getDisplaySource(path);
             debounceTimer.restart();
           }
         }
         function onWallpaperPreviewReady(originalPath, previewPath) {
           if (!Settings.data.wallpaper.videoPlaybackEnabled) {
-            if (currentWallpaperPath === originalPath && !useFallbackTransition) {
-              currentWallpaper.source = "";
-              currentWallpaper.source = previewPath;
-            }
-            if (currentWallpaperPath === originalPath && useFallbackTransition && currentFallback.item && currentFallback.item.setSource) {
-              currentFallback.item.setSource("");
-              currentFallback.item.setSource(previewPath);
+            if (futureWallpaper === originalPath) {
+              futureWallpaperDisplay = getDisplaySource(originalPath);
+              setWallpaperImmediate(futureWallpaperDisplay);
             }
           }
         }
@@ -168,10 +130,10 @@ Variants {
         function onWindowListChanged() {
           updateWallpaperSuspension();
         }
-        function onWorkspaceChanged() {
+        function onActiveWindowChanged() {
           updateWallpaperSuspension();
         }
-        function onActiveWindowChanged() {
+        function onWorkspaceChanged() {
           updateWallpaperSuspension();
         }
       }
@@ -221,6 +183,9 @@ Variants {
               sourceSize = optimalSize;
             }
           }
+          if (status === Image.Ready && keepFallbackVisible) {
+            keepFallbackVisible = false;
+          }
         }
         onSourceChanged: {
           dimensionsCalculated = false;
@@ -261,7 +226,9 @@ Variants {
       Loader {
         id: shaderLoader
         anchors.fill: parent
-        active: true
+        z: 2
+        active: (useShaderTransitions && !keepFallbackVisible) || fallbackTransitionActive
+        visible: active
 
         sourceComponent: {
           switch (transitionType) {
@@ -279,130 +246,36 @@ Variants {
         }
       }
 
-      // Fade or None transition shader component
-      Component {
-        id: fadeShaderComponent
-        ShaderEffect {
-          anchors.fill: parent
-
-          property variant source1: root.shaderSource1
-          property variant source2: root.shaderSource2
-          property real progress: root.shaderProgress
-
-          // Fill mode properties
-          property real fillMode: root.fillMode
-          property vector4d fillColor: root.fillColor
-          property real imageWidth1: root.shaderImageWidth1
-          property real imageHeight1: root.shaderImageHeight1
-          property real imageWidth2: root.shaderImageWidth2
-          property real imageHeight2: root.shaderImageHeight2
-          property real screenWidth: width
-          property real screenHeight: height
-
-          fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/wp_fade.frag.qsb")
-        }
-      }
-
-      // Wipe transition shader component
-      Component {
-        id: wipeShaderComponent
-        ShaderEffect {
-          anchors.fill: parent
-
-          property variant source1: root.shaderSource1
-          property variant source2: root.shaderSource2
-          property real progress: root.shaderProgress
-          property real smoothness: root.edgeSmoothness
-          property real direction: root.wipeDirection
-
-          // Fill mode properties
-          property real fillMode: root.fillMode
-          property vector4d fillColor: root.fillColor
-          property real imageWidth1: root.shaderImageWidth1
-          property real imageHeight1: root.shaderImageHeight1
-          property real imageWidth2: root.shaderImageWidth2
-          property real imageHeight2: root.shaderImageHeight2
-          property real screenWidth: width
-          property real screenHeight: height
-
-          fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/wp_wipe.frag.qsb")
-        }
-      }
-
-      // Disc reveal transition shader component
-      Component {
-        id: discShaderComponent
-        ShaderEffect {
-          anchors.fill: parent
-
-          property variant source1: root.shaderSource1
-          property variant source2: root.shaderSource2
-          property real progress: root.shaderProgress
-          property real smoothness: root.edgeSmoothness
-          property real aspectRatio: root.width / root.height
-          property real centerX: root.discCenterX
-          property real centerY: root.discCenterY
-
-          // Fill mode properties
-          property real fillMode: root.fillMode
-          property vector4d fillColor: root.fillColor
-          property real imageWidth1: root.shaderImageWidth1
-          property real imageHeight1: root.shaderImageHeight1
-          property real imageWidth2: root.shaderImageWidth2
-          property real imageHeight2: root.shaderImageHeight2
-          property real screenWidth: width
-          property real screenHeight: height
-
-          fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/wp_disc.frag.qsb")
-        }
-      }
-
-      // Diagonal stripes transition shader component
-      Component {
-        id: stripesShaderComponent
-        ShaderEffect {
-          anchors.fill: parent
-
-          property variant source1: root.shaderSource1
-          property variant source2: root.shaderSource2
-          property real progress: root.shaderProgress
-          property real smoothness: root.edgeSmoothness
-          property real aspectRatio: root.width / root.height
-          property real stripeCount: root.stripesCount
-          property real angle: root.stripesAngle
-
-          // Fill mode properties
-          property real fillMode: root.fillMode
-          property vector4d fillColor: root.fillColor
-          property real imageWidth1: root.shaderImageWidth1
-          property real imageHeight1: root.shaderImageHeight1
-          property real imageWidth2: root.shaderImageWidth2
-          property real imageHeight2: root.shaderImageHeight2
-          property real screenWidth: width
-          property real screenHeight: height
-
-          fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/wp_stripes.frag.qsb")
-        }
+      // Fallback renderer for video wallpapers or mixed transitions
+      Rectangle {
+        id: fallbackFill
+        anchors.fill: parent
+        color: Qt.rgba(fillColor.x, fillColor.y, fillColor.z, fillColor.w)
+        visible: !useShaderTransitions || keepFallbackVisible
       }
 
       Item {
-        id: fallbackLayer
+        id: fallbackContainer
         anchors.fill: parent
-        visible: false
+        visible: !useShaderTransitions || keepFallbackVisible
 
         Loader {
-          id: currentFallback
+          id: fallbackCurrent
           anchors.fill: parent
-          active: useFallbackTransition
+          active: false
+          opacity: 1.0
         }
 
         Loader {
-          id: nextFallback
+          id: fallbackNext
           anchors.fill: parent
-          active: useFallbackTransition
-          opacity: 0
+          active: false
+          opacity: 0.0
         }
       }
+
+      property var fallbackBaseLoader: fallbackCurrent
+      property var fallbackOverlayLoader: fallbackNext
 
       ShaderEffectSource {
         id: fallbackBaseSource
@@ -424,124 +297,270 @@ Variants {
         visible: false
       }
 
+      readonly property var shaderSource1: useShaderTransitions ? currentWallpaper : fallbackBaseSource
+      readonly property var shaderSource2: {
+        if (!useShaderTransitions && !fallbackTransitionActive) {
+          return shaderSource1;
+        }
+        return useShaderTransitions ? nextWallpaper : fallbackOverlaySource;
+      }
+      readonly property real shaderFillMode: useShaderTransitions ? fillMode : 3.0
+      readonly property real shaderImageWidth1: getShaderSourceWidth(shaderSource1)
+      readonly property real shaderImageHeight1: getShaderSourceHeight(shaderSource1)
+      readonly property real shaderImageWidth2: getShaderSourceWidth(shaderSource2)
+      readonly property real shaderImageHeight2: getShaderSourceHeight(shaderSource2)
+
+      // Fade or None transition shader component
       Component {
-        id: fallbackImageComponent
+        id: fadeShaderComponent
+        ShaderEffect {
+          anchors.fill: parent
+
+          property variant source1: root.shaderSource1
+          property variant source2: root.shaderSource2
+          property real progress: root.transitionProgress
+
+          // Fill mode properties
+          property real fillMode: root.shaderFillMode
+          property vector4d fillColor: root.fillColor
+          property real imageWidth1: root.shaderImageWidth1
+          property real imageHeight1: root.shaderImageHeight1
+          property real imageWidth2: root.shaderImageWidth2
+          property real imageHeight2: root.shaderImageHeight2
+          property real screenWidth: width
+          property real screenHeight: height
+
+          fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/wp_fade.frag.qsb")
+        }
+      }
+
+      // Wipe transition shader component
+      Component {
+        id: wipeShaderComponent
+        ShaderEffect {
+          anchors.fill: parent
+
+          property variant source1: root.shaderSource1
+          property variant source2: root.shaderSource2
+          property real progress: root.transitionProgress
+          property real smoothness: root.edgeSmoothness
+          property real direction: root.wipeDirection
+
+          // Fill mode properties
+          property real fillMode: root.shaderFillMode
+          property vector4d fillColor: root.fillColor
+          property real imageWidth1: root.shaderImageWidth1
+          property real imageHeight1: root.shaderImageHeight1
+          property real imageWidth2: root.shaderImageWidth2
+          property real imageHeight2: root.shaderImageHeight2
+          property real screenWidth: width
+          property real screenHeight: height
+
+          fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/wp_wipe.frag.qsb")
+        }
+      }
+
+      // Disc reveal transition shader component
+      Component {
+        id: discShaderComponent
+        ShaderEffect {
+          anchors.fill: parent
+
+          property variant source1: root.shaderSource1
+          property variant source2: root.shaderSource2
+          property real progress: root.transitionProgress
+          property real smoothness: root.edgeSmoothness
+          property real aspectRatio: root.width / root.height
+          property real centerX: root.discCenterX
+          property real centerY: root.discCenterY
+
+          // Fill mode properties
+          property real fillMode: root.shaderFillMode
+          property vector4d fillColor: root.fillColor
+          property real imageWidth1: root.shaderImageWidth1
+          property real imageHeight1: root.shaderImageHeight1
+          property real imageWidth2: root.shaderImageWidth2
+          property real imageHeight2: root.shaderImageHeight2
+          property real screenWidth: width
+          property real screenHeight: height
+
+          fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/wp_disc.frag.qsb")
+        }
+      }
+
+      // Diagonal stripes transition shader component
+      Component {
+        id: stripesShaderComponent
+        ShaderEffect {
+          anchors.fill: parent
+
+          property variant source1: root.shaderSource1
+          property variant source2: root.shaderSource2
+          property real progress: root.transitionProgress
+          property real smoothness: root.edgeSmoothness
+          property real aspectRatio: root.width / root.height
+          property real stripeCount: root.stripesCount
+          property real angle: root.stripesAngle
+
+          // Fill mode properties
+          property real fillMode: root.shaderFillMode
+          property vector4d fillColor: root.fillColor
+          property real imageWidth1: root.shaderImageWidth1
+          property real imageHeight1: root.shaderImageHeight1
+          property real imageWidth2: root.shaderImageWidth2
+          property real imageHeight2: root.shaderImageHeight2
+          property real screenWidth: width
+          property real screenHeight: height
+
+          fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/wp_stripes.frag.qsb")
+        }
+      }
+
+      // Components for fallback rendering (image/video)
+      Component {
+        id: wallpaperImageComponent
         Image {
           id: fallbackImage
           anchors.fill: parent
+          property string wallpaperPath: ""
+          source: wallpaperPath
+          fillMode: root.imageFillMode()
           smooth: true
-          mipmap: false
           cache: false
           asynchronous: true
-          fillMode: root.imageFillMode
-          property real visualOpacity: opacity
-          function setSource(src) {
-            source = src;
-          }
+          mipmap: false
         }
       }
 
       Component {
-        id: fallbackVideoComponent
+        id: wallpaperVideoComponent
         Item {
           id: fallbackVideo
           anchors.fill: parent
-          property alias player: mediaPlayer
-
-          property string source: ""
-          property real visualOpacity: opacity
-          property real targetVolume: 0.0
+          property string wallpaperPath: ""
           property bool suspended: false
-          property bool muteForWindows: false
-          property string screenName: modelData ? modelData.name : ""
-          property bool primaryAudio: Settings.data.wallpaper.videoAudioMode !== "primary" ? true : (screenName === Screen.name)
+          property bool shouldPlay: false
+          property real targetVolume: 0.0
+          property string pendingPath: ""
+          property bool fadeSwitching: false
+          readonly property int fadeDuration: Math.max(120, Settings.data.wallpaper.transitionDuration)
+
           Behavior on targetVolume {
             NumberAnimation {
-              duration: 220
+              duration: fadeDuration
               easing.type: Easing.InOutCubic
             }
           }
 
           Timer {
             id: fadeOutTimer
-            interval: 220
+            interval: fadeDuration
             repeat: false
             onTriggered: {
-              if (fallbackVideo.targetVolume === 0) {
-                mediaPlayer.pause();
-                WallpaperService.clearActiveAudioPath(mediaPlayer.source);
+              videoPlayer.pause();
+              WallpaperService.clearActiveAudioPath(videoPlayer.source);
+              if (fadeSwitching && pendingPath !== "") {
+                fadeSwitching = false;
+                videoPlayer.source = pendingPath;
+                pendingPath = "";
+                updatePlaybackState();
               }
             }
           }
 
+          function updatePlaybackState() {
+            shouldPlay = Settings.data.wallpaper.videoPlaybackEnabled && !suspended && wallpaperPath;
+
+            const audioMode = Settings.data.wallpaper.videoAudioMode || "per_monitor";
+            const primaryMonitor = WallpaperService.getPrimaryAudioMonitor();
+            isPrimaryScreen = primaryMonitor && (primaryMonitor === (root.screen?.name || ""));
+
+            if (shouldPlay) {
+              fadeOutTimer.stop();
+              if (audioMode === "primary") {
+                if (isPrimaryScreen) {
+                  WallpaperService.setActiveAudioPath(wallpaperPath);
+                } else {
+                  WallpaperService.clearActiveAudioPath(wallpaperPath);
+                }
+              } else {
+                WallpaperService.clearActiveAudioPath(wallpaperPath);
+              }
+              videoPlayer.play();
+            } else {
+              targetVolume = 0.0;
+              fadeOutTimer.restart();
+            }
+            videoSurface.visible = wallpaperPath !== "";
+            updateVolume();
+          }
+
+          function updateVolume() {
+            const baseVolume = Settings.data.wallpaper.videoAudioVolume;
+            const hasFocus = WallpaperService.activeAudioPath === wallpaperPath;
+            const muted = WallpaperService.computeAudioMuted() || root.wallpaperMuteForWindows;
+            const audioMode = Settings.data.wallpaper.videoAudioMode || "per_monitor";
+
+            var desired = 0.0;
+            if (shouldPlay && !muted) {
+              if (audioMode === "per_monitor") {
+                desired = baseVolume;
+              } else if (audioMode === "primary" && isPrimaryScreen && hasFocus) {
+                desired = baseVolume;
+              }
+            }
+            targetVolume = desired;
+          }
+
           MediaPlayer {
-            id: mediaPlayer
-            source: fallbackVideo.source
+            id: videoPlayer
+            source: wallpaperPath
             loops: MediaPlayer.Infinite
-            videoOutput: videoOutput
-            audioOutput: wallpaperAudio
+            autoPlay: false
+            videoOutput: videoSurface
+            audioOutput: AudioOutput {
+              muted: WallpaperService.computeAudioMuted()
+              volume: fallbackVideo.targetVolume
+            }
           }
 
           VideoOutput {
-            id: videoOutput
+            id: videoSurface
             anchors.fill: parent
-            fillMode: root.videoFillMode
+            fillMode: root.videoFillMode()
+            visible: wallpaperPath !== ""
           }
 
-          AudioOutput {
-            id: wallpaperAudio
-            muted: false
-            volume: fallbackVideo.targetVolume
-          }
-
-          function updatePlaybackState() {
-            var allowPlayback = Settings.data.wallpaper.videoPlaybackEnabled && !suspended && source;
-            var muted = muteForWindows || suspended || WallpaperService.computeAudioMuted(fallbackVideo.source);
-            var desired = (!muted && allowPlayback) ? Settings.data.wallpaper.videoAudioVolume * visualOpacity : 0;
-
-            if (allowPlayback) {
-              fadeOutTimer.stop();
-              mediaPlayer.play();
-              wallpaperAudio.muted = muted;
-            } else {
-              wallpaperAudio.muted = true;
+          onWallpaperPathChanged: {
+            fadeOutTimer.stop();
+            if (videoPlayer.playbackState === MediaPlayer.PlayingState
+                && videoPlayer.source
+                && wallpaperPath !== videoPlayer.source) {
+              pendingPath = wallpaperPath;
+              fadeSwitching = true;
+              targetVolume = 0.0;
               fadeOutTimer.restart();
+              return;
             }
-
-            fallbackVideo.targetVolume = desired;
-          }
-
-          function setSource(src) {
-            fallbackVideo.targetVolume = 0.0;
-            source = src;
-            mediaPlayer.source = src;
-            if (Settings.data.wallpaper.videoAudioMode === "primary" && primaryAudio) {
-              WallpaperService.setActiveAudioPath(src);
-            }
+            WallpaperService.clearActiveAudioPath(videoPlayer.source);
+            videoPlayer.source = wallpaperPath;
             updatePlaybackState();
           }
 
-          onVisualOpacityChanged: updatePlaybackState()
-          onMuteForWindowsChanged: updatePlaybackState()
           onSuspendedChanged: updatePlaybackState()
+          Component.onDestruction: WallpaperService.clearActiveAudioPath(videoPlayer.source)
+          Component.onCompleted: updatePlaybackState()
 
           Connections {
-            target: WallpaperService
-            function onAudioFocusChanged() {
-              fallbackVideo.updatePlaybackState();
-            }
+            target: Settings.data.wallpaper
+            function onVideoAudioVolumeChanged() { updateVolume(); }
+            function onVideoAudioMutedChanged() { updateVolume(); }
+            function onVideoPlaybackEnabledChanged() { updatePlaybackState(); }
+            function onVideoAudioModeChanged() { updatePlaybackState(); }
           }
           Connections {
-            target: Settings.data.wallpaper
-            function onVideoPlaybackEnabledChanged() {
-              fallbackVideo.updatePlaybackState();
-            }
-            function onVideoAudioMutedChanged() {
-              fallbackVideo.updatePlaybackState();
-            }
-            function onVideoAudioVolumeChanged() {
-              fallbackVideo.updatePlaybackState();
-            }
+            target: WallpaperService
+            function onAudioFocusChanged() { updateVolume(); }
           }
         }
       }
@@ -557,14 +576,16 @@ Variants {
         duration: transitionType == "stripes" ? Settings.data.wallpaper.transitionDuration * 1.6 : Settings.data.wallpaper.transitionDuration
         easing.type: Easing.InOutCubic
         onFinished: {
+          if (!useShaderTransitions) {
+            transitionProgress = 0.0;
+            return;
+          }
           // Assign new image to current BEFORE clearing to prevent flicker
           const tempSource = nextWallpaper.source;
           currentWallpaper.source = tempSource;
-          currentWallpaperPath = futureWallpaper;
+          currentWallpaperPath = tempSource;
           currentWallpaperType = nextWallpaperType;
-          nextWallpaperType = currentWallpaperType;
           transitionProgress = 0.0;
-          useFallbackTransition = (currentWallpaperType === "video");
 
           // Now clear nextWallpaper after currentWallpaper has the new source
           // Force complete cleanup to free texture memory (~18-25MB per monitor)
@@ -572,24 +593,22 @@ Variants {
                          nextWallpaper.source = "";
                          nextWallpaper.sourceSize = undefined;
                          Qt.callLater(() => {
-                                        currentWallpaper.asynchronous = true;
-                                      });
+                                       currentWallpaper.asynchronous = true;
+                                     });
                        });
         }
       }
 
+      // Simple crossfade animation used when a video wallpaper is involved
       NumberAnimation {
         id: fallbackTransitionAnimation
         target: root
-        property: "fallbackTransitionProgress"
+        property: "transitionProgress"
         from: 0.0
         to: 1.0
         duration: Settings.data.wallpaper.transitionDuration
         easing.type: Easing.InOutCubic
         onFinished: finalizeFallbackTransition()
-        onStarted: {
-          fallbackTransitionActive = true;
-        }
       }
 
       // ------------------------------------------------------
@@ -638,30 +657,52 @@ Variants {
         }
       }
 
-      function getDisplaySource(path) {
-        if (!path || path === "") {
-          return "";
+      function imageFillMode() {
+        switch (Settings.data.wallpaper.fillMode) {
+        case "center":
+          return Image.Pad;
+        case "fit":
+          return Image.PreserveAspectFit;
+        case "stretch":
+          return Image.Stretch;
+        case "crop":
+        default:
+          return Image.PreserveAspectCrop;
         }
-        if (WallpaperService.isVideoFile(path) && !Settings.data.wallpaper.videoPlaybackEnabled) {
-          WallpaperService.generateWallpaperPreview(path);
-          return WallpaperService.getPreviewPath(path);
+      }
+
+      function videoFillMode() {
+        switch (Settings.data.wallpaper.fillMode) {
+        case "center":
+          return VideoOutput.PreserveAspectFit;
+        case "fit":
+          return VideoOutput.PreserveAspectFit;
+        case "stretch":
+          return VideoOutput.Stretch;
+        case "crop":
+        default:
+          return VideoOutput.PreserveAspectCrop;
         }
-        return path;
       }
 
       function getShaderSourceWidth(source) {
         if (!source) {
           return width;
         }
-        var item = source.sourceItem !== undefined ? source.sourceItem : source;
-        if (item && item.sourceSize && item.sourceSize.width > 0) {
-          return item.sourceSize.width;
+        if (source.sourceSize && source.sourceSize.width > 0) {
+          return source.sourceSize.width;
         }
-        if (item && item.implicitWidth > 0) {
-          return item.implicitWidth;
+        if (source.width && source.width > 0) {
+          return source.width;
         }
-        if (item && item.width > 0) {
-          return item.width;
+        if (source.implicitWidth && source.implicitWidth > 0) {
+          return source.implicitWidth;
+        }
+        if (source.item && source.item.width > 0) {
+          return source.item.width;
+        }
+        if (source.item && source.item.implicitWidth > 0) {
+          return source.item.implicitWidth;
         }
         return width;
       }
@@ -670,155 +711,135 @@ Variants {
         if (!source) {
           return height;
         }
-        var item = source.sourceItem !== undefined ? source.sourceItem : source;
-        if (item && item.sourceSize && item.sourceSize.height > 0) {
-          return item.sourceSize.height;
+        if (source.sourceSize && source.sourceSize.height > 0) {
+          return source.sourceSize.height;
         }
-        if (item && item.implicitHeight > 0) {
-          return item.implicitHeight;
+        if (source.height && source.height > 0) {
+          return source.height;
         }
-        if (item && item.height > 0) {
-          return item.height;
+        if (source.implicitHeight && source.implicitHeight > 0) {
+          return source.implicitHeight;
+        }
+        if (source.item && source.item.height > 0) {
+          return source.item.height;
+        }
+        if (source.item && source.item.implicitHeight > 0) {
+          return source.item.implicitHeight;
         }
         return height;
       }
 
-      function getFallbackComponent(type) {
-        if (type === "video" && Settings.data.wallpaper.videoPlaybackEnabled) {
-          return fallbackVideoComponent;
+      function getActiveWorkspacesForScreen(screenName) {
+        const activeIds = [];
+        if (!CompositorService || !CompositorService.workspaces) {
+          return activeIds;
         }
-        return fallbackImageComponent;
+        for (var i = 0; i < CompositorService.workspaces.count; i++) {
+          const ws = CompositorService.workspaces.get(i);
+          if (ws.output === screenName && (ws.isActive || ws.isFocused)) {
+            activeIds.push(String(ws.id));
+          }
+        }
+        return activeIds;
       }
 
-      function getImageFillMode() {
-        switch (Settings.data.wallpaper.fillMode) {
-        case "fit":
-          return Image.PreserveAspectFit;
-        case "stretch":
-          return Image.Stretch;
-        case "center":
-          return Image.Pad;
-        default:
-          return Image.PreserveAspectCrop;
-        }
-      }
-
-      function getVideoFillMode() {
-        switch (Settings.data.wallpaper.fillMode) {
-        case "fit":
-          return VideoOutput.PreserveAspectFit;
-        case "stretch":
-          return VideoOutput.Stretch;
-        case "center":
-          return VideoOutput.Pad;
-        default:
-          return VideoOutput.PreserveAspectCrop;
-        }
-      }
-
-      function matchesWindowRule(win, rules) {
-        if (!rules || !rules.length) {
+      function windowMatchesList(list, window) {
+        if (!list || list.length === 0) {
           return false;
         }
-        var appId = (win.appId || "").toString().toLowerCase();
-        var cls = (win.class || "").toString().toLowerCase();
-        var title = (win.title || "").toString().toLowerCase();
-        var name = (win.name || "").toString().toLowerCase();
-        for (var i = 0; i < rules.length; i++) {
-          var rule = (rules[i] || "").toString().toLowerCase();
-          if (rule === "") {
-            continue;
-          }
-          if ((appId && appId.indexOf(rule) !== -1) || (cls && cls.indexOf(rule) !== -1) || (title && title.indexOf(rule) !== -1) || (name && name.indexOf(rule) !== -1)) {
+        const haystack = [
+          window?.appId,
+          window?.class,
+          window?.initialClass,
+          window?.title,
+          window?.name
+        ].filter(Boolean).map(x => String(x).toLowerCase()).join(" ");
+
+        for (var i = 0; i < list.length; i++) {
+          const term = String(list[i] || "").toLowerCase().trim();
+          if (term.length > 0 && haystack.includes(term)) {
             return true;
           }
         }
         return false;
       }
 
-      function updateWallpaperSuspension() {
-        if (!Settings.data.wallpaper.pauseVideoOnWindows) {
-          wallpaperSuspended = lockScreenActive;
-          wallpaperMuteForWindows = lockScreenActive;
-          applySuspensionState();
-          return;
-        }
-
-        if (lockScreenActive) {
-          wallpaperSuspended = true;
-          wallpaperMuteForWindows = true;
-          applySuspensionState();
-          return;
-        }
-
-        var targetWorkspaceId = -1;
-        var fallbackWorkspaceId = -1;
-        for (var i = 0; i < CompositorService.workspaces.count; i++) {
-          var ws = CompositorService.workspaces.get(i);
-          if (ws.output !== modelData.name) {
-            continue;
-          }
-          if (ws.isFocused || ws.isActive) {
-            targetWorkspaceId = ws.id;
-            break;
-          }
-          if (fallbackWorkspaceId === -1) {
-            fallbackWorkspaceId = ws.id;
-          }
-        }
-        if (targetWorkspaceId === -1) {
-          targetWorkspaceId = fallbackWorkspaceId;
-        }
-
-        var windows = CompositorService.windows;
-        var shouldBlock = false;
-
-        for (var w = 0; w < windows.count; w++) {
-          var win = windows.get(w);
-          var sameWorkspace = targetWorkspaceId !== -1 && win.workspaceId === targetWorkspaceId;
-          var sameOutput = win.output && win.output === modelData.name;
-          if (targetWorkspaceId !== -1) {
-            if (!sameWorkspace) {
-              continue;
-            }
-          } else if (!sameOutput) {
-            continue;
-          }
-
-          if (matchesWindowRule(win, Settings.data.wallpaper.pauseVideoOnWindowsMuteWhitelist)) {
-            continue;
-          }
-          if (matchesWindowRule(win, Settings.data.wallpaper.pauseVideoOnWindowsBlacklist)) {
-            continue;
-          }
-          shouldBlock = true;
-          break;
-        }
-
-        if (!shouldBlock) {
-          wallpaperSuspended = false;
-          wallpaperMuteForWindows = false;
-        } else if (Settings.data.wallpaper.muteInsteadOfPauseOnWindows) {
-          wallpaperSuspended = false;
-          wallpaperMuteForWindows = true;
-        } else {
-          wallpaperSuspended = true;
-          wallpaperMuteForWindows = false;
-        }
-        applySuspensionState();
+      function isWindowBlacklisted(window) {
+        return windowMatchesList(Settings.data.wallpaper.pauseVideoOnWindowsBlacklist || [], window);
       }
 
-      function applySuspensionState() {
-        var loaders = [fallbackBaseLoader, fallbackOverlayLoader];
-        for (var i = 0; i < loaders.length; i++) {
-          var item = loaders[i] && loaders[i].item;
-          if (!item) continue;
-          if ("suspended" in item) {
-            item.suspended = wallpaperSuspended;
+      function isWindowMuteWhitelisted(window) {
+        return windowMatchesList(Settings.data.wallpaper.pauseVideoOnWindowsMuteWhitelist || [], window);
+      }
+
+      function computeWindowActions() {
+        const actions = {
+          pause: false,
+          mute: false
+        };
+
+        if (!Settings.data.wallpaper.videoPlaybackEnabled || !Settings.data.wallpaper.pauseVideoOnWindows) {
+          return actions;
+        }
+
+        const screenName = modelData?.name;
+        if (!screenName || !CompositorService || !CompositorService.windows) {
+          return actions;
+        }
+
+        const activeWorkspaceIds = getActiveWorkspacesForScreen(screenName);
+        const muteEnabled = Settings.data.wallpaper.muteInsteadOfPauseOnWindows;
+        const whitelist = Settings.data.wallpaper.pauseVideoOnWindowsMuteWhitelist || [];
+        const whitelistActive = muteEnabled && whitelist.length > 0;
+
+        // If mute-instead is on and whitelist is empty, treat every window as mute-only (no pause)
+        if (muteEnabled && !whitelistActive) {
+          for (var j = 0; j < CompositorService.windows.count; j++) {
+            const w = CompositorService.windows.get(j);
+            if (isWindowBlacklisted(w)) {
+              continue;
+            }
+            const wWorkspace = (w.workspaceId !== undefined && w.workspaceId !== null) ? String(w.workspaceId) : "";
+            const onScreen = (activeWorkspaceIds.length > 0 && activeWorkspaceIds.indexOf(wWorkspace) !== -1)
+                             || (activeWorkspaceIds.length === 0 && w.output === screenName);
+            if (onScreen) {
+              actions.mute = true;
+              break;
+            }
           }
-          if ("muteForWindows" in item) {
-            item.muteForWindows = wallpaperMuteForWindows;
+          return actions;
+        }
+
+        for (var i = 0; i < CompositorService.windows.count; i++) {
+          const window = CompositorService.windows.get(i);
+          if (isWindowBlacklisted(window)) {
+            continue;
           }
+          const windowWorkspace = (window.workspaceId !== undefined && window.workspaceId !== null) ? String(window.workspaceId) : "";
+          const isOnScreen = (activeWorkspaceIds.length > 0 && activeWorkspaceIds.indexOf(windowWorkspace) !== -1)
+                             || (activeWorkspaceIds.length === 0 && window.output === screenName);
+          if (!isOnScreen) {
+            continue;
+          }
+
+          const whitelistedForMute = whitelistActive && isWindowMuteWhitelisted(window);
+          const windowTriggersMute = muteEnabled && (!whitelistActive || whitelistedForMute);
+          const windowTriggersPause = (!muteEnabled) || (whitelistActive && !whitelistedForMute);
+
+          actions.mute = actions.mute || windowTriggersMute;
+          actions.pause = actions.pause || windowTriggersPause;
+
+          if (actions.mute && actions.pause) {
+            break;
+          }
+        }
+
+        return actions;
+      }
+
+      function applySuspensionToLoader(loader) {
+        if (loader && loader.item && loader.item.hasOwnProperty("suspended")) {
+          loader.item.suspended = wallpaperSuspended;
         }
       }
 
@@ -828,16 +849,97 @@ Variants {
         }
       }
 
-      function stopLoaderPlayback(loader) {
-        if (loader && loader.item) {
-          if (loader.item.hasOwnProperty("targetVolume")) {
-            loader.item.targetVolume = 0.0;
+      function refreshWallpaperAudio() {
+        const loaders = [fallbackBaseLoader, fallbackOverlayLoader];
+        for (var i = 0; i < loaders.length; i++) {
+          var item = loaders[i]?.item;
+          if (item && item.updateVolume) {
+            item.updateVolume();
           }
-          var player = loader.item.player || loader.item.mediaPlayer;
-          if (player) {
-            player.pause();
-            WallpaperService.clearActiveAudioPath(player.source);
-          }
+        }
+      }
+
+      function syncVideoSuspension() {
+        applySuspensionToLoader(fallbackBaseLoader);
+        applySuspensionToLoader(fallbackOverlayLoader);
+      }
+
+      function updateWallpaperSuspension() {
+        const actions = computeWindowActions();
+        const shouldSuspend = actions.pause;
+        const shouldMute = actions.mute;
+
+        if (wallpaperSuspended === shouldSuspend && wallpaperMuteForWindows === shouldMute) {
+          return;
+        }
+
+        wallpaperSuspended = shouldSuspend;
+        wallpaperMuteForWindows = shouldMute;
+        syncVideoSuspension();
+        refreshWallpaperAudio();
+      }
+
+      onWallpaperSuspendedChanged: syncVideoSuspension()
+
+      // ------------------------------------------------------
+      function setFallbackVisual(loader, path, type) {
+        if (!loader) {
+          return;
+        }
+        if (!path) {
+          loader.active = false;
+          loader.sourceComponent = null;
+          return;
+        }
+
+        loader.sourceComponent = (type === "video") ? wallpaperVideoComponent : wallpaperImageComponent;
+        loader.active = true;
+
+        if (loader.item) {
+          loader.item.wallpaperPath = path;
+          applySuspensionToLoader(loader);
+        } else {
+          // Apply the source after creation
+          Qt.callLater(() => {
+                         if (loader.item) {
+                           loader.item.wallpaperPath = path;
+                           applySuspensionToLoader(loader);
+                         }
+                       });
+        }
+      }
+
+      function finalizeFallbackTransition() {
+        fallbackTransitionAnimation.stop();
+
+        if (!pendingFallbackPath) {
+          fallbackTransitioning = false;
+          return;
+        }
+
+        currentWallpaperPath = pendingFallbackPath;
+        currentWallpaperType = nextWallpaperType;
+
+        if (currentWallpaperType === "image") {
+          keepFallbackVisible = true;
+          currentWallpaper.source = currentWallpaperPath;
+        }
+
+        // Swap loaders so the overlay becomes the new base and reuse its video/player
+        var oldBase = fallbackBaseLoader;
+        fallbackBaseLoader = fallbackOverlayLoader;
+        fallbackOverlayLoader = oldBase;
+
+        fallbackBaseLoader.opacity = 1.0;
+        fallbackOverlayLoader.opacity = 0.0;
+        fallbackOverlayLoader.active = false;
+        fallbackOverlayLoader.sourceComponent = null;
+
+        pendingFallbackPath = "";
+        transitionProgress = 0.0;
+        fallbackTransitioning = false;
+        if (!useShaderTransitions) {
+          keepFallbackVisible = false;
         }
       }
 
@@ -852,12 +954,8 @@ Variants {
         const wallpaperPath = WallpaperService.getWallpaper(modelData.name);
 
         futureWallpaper = wallpaperPath;
-        currentWallpaperPath = wallpaperPath;
-        currentWallpaperType = WallpaperService.getWallpaperType(wallpaperPath);
-        nextWallpaperType = currentWallpaperType;
-        useFallbackTransition = (currentWallpaperType === "video");
-        updateWallpaperSuspension();
         performStartupTransition();
+        Qt.callLater(updateWallpaperSuspension);
       }
 
       // ------------------------------------------------------
@@ -865,179 +963,139 @@ Variants {
         transitionAnimation.stop();
         fallbackTransitionAnimation.stop();
         transitionProgress = 0.0;
-        fallbackTransitionProgress = 0.0;
+        fallbackTransitioning = false;
+        keepFallbackVisible = false;
 
-        currentWallpaperPath = futureWallpaper;
-        currentWallpaperType = WallpaperService.getWallpaperType(currentWallpaperPath);
-        nextWallpaperType = currentWallpaperType;
-        useFallbackTransition = (currentWallpaperType === "video");
-        updateWallpaperSuspension();
+        // Clear nextWallpaper completely to free texture memory
+        nextWallpaper.source = "";
+        nextWallpaper.sourceSize = undefined;
 
-        if (useFallbackTransition) {
-          stopLoaderPlayback(fallbackBaseLoader);
-          stopLoaderPlayback(fallbackOverlayLoader);
-          currentFallback.sourceComponent = getFallbackComponent(currentWallpaperType);
-          if (currentFallback.item && currentFallback.item.setSource) {
-            currentFallback.item.setSource(source);
-            currentFallback.item.opacity = 1;
-            if (currentFallback.item.visualOpacity !== undefined) {
-              currentFallback.item.visualOpacity = 1;
-            }
-          }
-          if (nextFallback.item) {
-            nextFallback.item.opacity = 0;
-          }
-          if (nextFallback.active) {
-            nextFallback.active = false;
-          }
-          applySuspensionState();
-        } else {
-          // Clear nextWallpaper completely to free texture memory
-          nextWallpaper.source = "";
-          nextWallpaper.sourceSize = undefined;
+        currentWallpaper.source = "";
+        pendingFallbackPath = "";
 
-          currentWallpaper.source = "";
+        const nextType = WallpaperService.getWallpaperType(source);
+        nextWallpaperType = nextType;
+        currentWallpaperType = nextType;
+        currentWallpaperPath = source;
 
+        if (nextType === "image") {
+          fallbackBaseLoader.active = false;
+          fallbackOverlayLoader.active = false;
+          fallbackOverlayLoader.opacity = 0.0;
           Qt.callLater(() => {
                          currentWallpaper.source = source;
-                         currentWallpaper.opacity = 1;
                        });
+        } else {
+          setFallbackVisual(fallbackBaseLoader, source, nextType);
+          fallbackOverlayLoader.active = false;
+          fallbackOverlayLoader.opacity = 0.0;
         }
-        updateWallpaperSuspension();
       }
 
       // ------------------------------------------------------
       function setWallpaperWithTransition(source) {
-        if (useFallbackTransition) {
-          startFallbackTransition(source);
+        if (source === currentWallpaper.source && currentWallpaperType === "image") {
           return;
         }
-
-        if (source === currentWallpaper.source) {
+        const nextType = WallpaperService.getWallpaperType(source);
+        nextWallpaperType = nextType;
+        if (source === currentWallpaperPath && currentWallpaperType === nextType) {
           return;
         }
 
         if (transitioning) {
-        // We are interrupting a transition - handle cleanup properly
-        transitionAnimation.stop();
-        transitionProgress = 0;
+          // We are interrupting a transition - handle cleanup properly
+          transitionAnimation.stop();
+          fallbackTransitionAnimation.stop();
+          transitionProgress = 0;
 
-        // Assign nextWallpaper to currentWallpaper BEFORE clearing to prevent flicker
-        const newCurrentSource = nextWallpaper.source;
-        currentWallpaper.source = newCurrentSource;
-
-        // Now clear nextWallpaper after current has the new source
-        Qt.callLater(() => {
-                       nextWallpaper.source = "";
-
-                       // Now set the next wallpaper after a brief delay
-                       Qt.callLater(() => {
-                                      nextWallpaper.source = source;
-                                      currentWallpaper.asynchronous = false;
-                                      transitionAnimation.start();
-                                    });
-                     });
-        return;
-      }
-
-      nextWallpaper.source = source;
-      currentWallpaper.asynchronous = false;
-      transitionAnimation.start();
-    }
-
-      function startFallbackTransition(source) {
-        transitionAnimation.stop();
-        fallbackTransitionAnimation.stop();
-        fallbackTransitionProgress = 0.0;
-
-        fallbackBaseLoader.sourceComponent = getFallbackComponent(currentWallpaperType);
-        if (fallbackBaseLoader.item && currentWallpaperPath) {
-          fallbackBaseLoader.item.setSource(getDisplaySource(currentWallpaperPath));
-          fallbackBaseLoader.item.opacity = 1;
-          if (fallbackBaseLoader.item.visualOpacity !== undefined) {
-            fallbackBaseLoader.item.visualOpacity = 1;
-          }
-          fadeOutLoaderAudio(fallbackBaseLoader);
-        }
-        stopLoaderPlayback(fallbackOverlayLoader);
-
-        fallbackOverlayLoader.sourceComponent = getFallbackComponent(nextWallpaperType);
-        fallbackOverlayLoader.active = true;
-        fallbackOverlayLoader.opacity = 0;
-
-        Qt.callLater(() => {
-                       if (fallbackOverlayLoader.item && fallbackOverlayLoader.item.setSource) {
-                         const startAnim = function () {
-                           applySuspensionState();
-                           fallbackTransitionAnimation.start();
-                         };
-
-                         fallbackOverlayLoader.item.setSource(source);
-
-                         if (fallbackOverlayLoader.item.hasOwnProperty("status")) {
-                           if (fallbackOverlayLoader.item.status === Image.Ready) {
-                             startAnim();
-                           } else {
-                             // Wait for the image to become ready to avoid blank frames
-                             const handler = function () {
-                               fallbackOverlayLoader.item.statusChanged.disconnect(handler);
-                               startAnim();
-                             };
-                             fallbackOverlayLoader.item.statusChanged.connect(handler);
-                             return;
-                           }
-                         } else {
-                           startAnim();
-                         }
-                       }
-                     });
-      }
-
-      function finalizeFallbackTransition() {
-        fallbackTransitionProgress = 0.0;
-        currentWallpaperPath = futureWallpaper;
-        currentWallpaperType = nextWallpaperType;
-        nextWallpaperType = currentWallpaperType;
-        useFallbackTransition = (currentWallpaperType === "video");
-
-        var finalize = function () {
-          var temp = fallbackBaseLoader;
-          fallbackBaseLoader = fallbackOverlayLoader;
-          fallbackOverlayLoader = temp;
-          fallbackOverlayLoader.opacity = 0.0;
-          if (fallbackBaseLoader.item && fallbackBaseLoader.item.opacity !== undefined) {
-            fallbackBaseLoader.item.opacity = 1;
-            if (fallbackBaseLoader.item.visualOpacity !== undefined) {
-              fallbackBaseLoader.item.visualOpacity = 1;
-            }
+          if (pendingFallbackPath) {
+            finalizeFallbackTransition();
           }
 
-          recalculateImageSizes();
-          applySuspensionState();
+          if (useShaderTransitions) {
+            // Assign nextWallpaper to currentWallpaper BEFORE clearing to prevent flicker
+            const newCurrentSource = nextWallpaper.source;
+            currentWallpaper.source = newCurrentSource;
 
-          Qt.callLater(() => {
-            fallbackTransitionActive = false;
-            stopLoaderPlayback(fallbackOverlayLoader);
-          });
-        };
+            // Now clear nextWallpaper after current has the new source
+            Qt.callLater(() => {
+                          nextWallpaper.source = "";
 
-        var newSourcePath = getDisplaySource(currentWallpaperPath);
-        currentWallpaper.source = newSourcePath;
-        currentWallpaper.sourceSize = undefined;
-        currentWallpaper.opacity = 1;
+                          // Now set the next wallpaper after a brief delay
+                          Qt.callLater(() => {
+                                         nextWallpaper.source = source;
+                                         currentWallpaper.asynchronous = false;
+                                        transitionAnimation.start();
+                                       });
+                        });
+          } else {
+            // Restart fallback transition with the new sources
+            currentWallpaper.asynchronous = true;
+            setFallbackVisual(fallbackBaseLoader, currentWallpaperPath || currentWallpaper.source || source, currentWallpaperType);
+            setFallbackVisual(fallbackOverlayLoader, source, nextType);
+            fallbackOverlayLoader.opacity = 0.0;
+            pendingFallbackPath = source;
+            fallbackTransitioning = true;
 
-        if (currentWallpaperType === "image" && currentWallpaper.status !== Image.Ready) {
-          const handler = function () {
-            if (currentWallpaper.status === Image.Ready) {
-              currentWallpaper.statusChanged.disconnect(handler);
-              finalize();
+            // Fade audio out on the old wallpaper while the new one fades in
+            fadeOutLoaderAudio(fallbackBaseLoader);
+
+            var durationInterrupt = Settings.data.wallpaper.transitionDuration;
+            if (transitionType === "stripes") {
+              durationInterrupt = Settings.data.wallpaper.transitionDuration * 1.6;
             }
-          };
-          currentWallpaper.statusChanged.connect(handler);
+            transitionProgress = 0.0;
+            fallbackTransitionAnimation.duration = durationInterrupt;
+            fallbackTransitionAnimation.start();
+          }
           return;
         }
 
-        finalize();
+        if (currentWallpaperType === "image" && nextType === "image") {
+          pendingFallbackPath = "";
+          nextWallpaper.source = source;
+          currentWallpaper.asynchronous = false;
+          keepFallbackVisible = false;
+          transitionAnimation.start();
+          return;
+        }
+
+        // Fallback: crossfade when video is involved
+        transitionAnimation.stop();
+        currentWallpaper.asynchronous = true;
+
+        // When starting from no wallpaper, just set immediately
+        if (!currentWallpaperPath) {
+          setWallpaperImmediate(source);
+          return;
+        }
+
+        // Ensure the current fallback visual represents the active wallpaper
+        setFallbackVisual(fallbackBaseLoader, currentWallpaperPath || currentWallpaper.source || source, currentWallpaperType);
+        setFallbackVisual(fallbackOverlayLoader, source, nextType);
+        fallbackOverlayLoader.opacity = 0.0;
+
+        // Fade audio out on the old wallpaper while the new one fades in
+        fadeOutLoaderAudio(fallbackBaseLoader);
+
+        pendingFallbackPath = source;
+        fallbackTransitioning = true;
+        keepFallbackVisible = false;
+
+        if (transitionType === "none") {
+          finalizeFallbackTransition();
+          return;
+        } else {
+          var duration = Settings.data.wallpaper.transitionDuration;
+          if (transitionType === "stripes") {
+            duration = Settings.data.wallpaper.transitionDuration * 1.6;
+          }
+          transitionProgress = 0.0;
+          fallbackTransitioning = true;
+          fallbackTransitionAnimation.duration = duration;
+          fallbackTransitionAnimation.start();
+        }
       }
 
       // ------------------------------------------------------
@@ -1045,6 +1103,8 @@ Variants {
       function changeWallpaper() {
         // Get the transitionType from the settings
         transitionType = Settings.data.wallpaper.transitionType;
+        futureWallpaperDisplay = getDisplaySource(futureWallpaper);
+        nextWallpaperType = WallpaperService.getWallpaperType(futureWallpaperDisplay);
 
         if (transitionType == "random") {
           var index = Math.floor(Math.random() * allTransitions.length);
@@ -1056,35 +1116,27 @@ Variants {
           transitionType = "fade";
         }
 
-        nextWallpaperType = WallpaperService.getWallpaperType(futureWallpaper);
-        useFallbackTransition = (currentWallpaperType === "video" || nextWallpaperType === "video");
-        var displaySource = getDisplaySource(futureWallpaper);
-
-        if (WallpaperService.isVideoFile(futureWallpaper)) {
-          WallpaperService.generateWallpaperPreview(futureWallpaper);
-        }
-        updateWallpaperSuspension();
-
+        //Logger.i("Background", "New wallpaper: ", futureWallpaper, "On:", modelData.name, "Transition:", transitionType)
         switch (transitionType) {
         case "none":
-          setWallpaperImmediate(displaySource);
+          setWallpaperImmediate(futureWallpaperDisplay);
           break;
         case "wipe":
           wipeDirection = Math.random() * 4;
-          setWallpaperWithTransition(displaySource);
+          setWallpaperWithTransition(futureWallpaperDisplay);
           break;
         case "disc":
           discCenterX = Math.random();
           discCenterY = Math.random();
-          setWallpaperWithTransition(displaySource);
+          setWallpaperWithTransition(futureWallpaperDisplay);
           break;
         case "stripes":
           stripesCount = Math.round(Math.random() * 20 + 4);
           stripesAngle = Math.random() * 360;
-          setWallpaperWithTransition(displaySource);
+          setWallpaperWithTransition(futureWallpaperDisplay);
           break;
         default:
-          setWallpaperWithTransition(displaySource);
+          setWallpaperWithTransition(futureWallpaperDisplay);
           break;
         }
       }
@@ -1094,6 +1146,8 @@ Variants {
       function performStartupTransition() {
         // Get the transitionType from the settings
         transitionType = Settings.data.wallpaper.transitionType;
+        futureWallpaperDisplay = getDisplaySource(futureWallpaper);
+        nextWallpaperType = WallpaperService.getWallpaperType(futureWallpaperDisplay);
 
         if (transitionType == "random") {
           var index = Math.floor(Math.random() * allTransitions.length);
@@ -1108,39 +1162,46 @@ Variants {
         // Apply transitionType so the shader loader picks the correct shader
         this.transitionType = transitionType;
 
-        nextWallpaperType = WallpaperService.getWallpaperType(futureWallpaper);
-        useFallbackTransition = (currentWallpaperType === "video" || nextWallpaperType === "video");
-        var displaySource = getDisplaySource(futureWallpaper);
-
-        if (WallpaperService.isVideoFile(futureWallpaper)) {
-          WallpaperService.generateWallpaperPreview(futureWallpaper);
-        }
-
         switch (transitionType) {
         case "none":
-          setWallpaperImmediate(displaySource);
+          setWallpaperImmediate(futureWallpaperDisplay);
           break;
         case "wipe":
           wipeDirection = Math.random() * 4;
-          setWallpaperWithTransition(displaySource);
+          setWallpaperWithTransition(futureWallpaperDisplay);
           break;
         case "disc":
           // Force center origin for elegant startup animation
           discCenterX = 0.5;
           discCenterY = 0.5;
-          setWallpaperWithTransition(displaySource);
+          setWallpaperWithTransition(futureWallpaperDisplay);
           break;
         case "stripes":
           stripesCount = Math.round(Math.random() * 20 + 4);
           stripesAngle = Math.random() * 360;
-          setWallpaperWithTransition(displaySource);
+          setWallpaperWithTransition(futureWallpaperDisplay);
           break;
         default:
-          setWallpaperWithTransition(displaySource);
+          setWallpaperWithTransition(futureWallpaperDisplay);
           break;
         }
         // Mark startup transition complete
         isStartupTransition = false;
+      }
+
+      // ------------------------------------------------------
+      function getDisplaySource(path) {
+        if (!path) {
+          return "";
+        }
+        if (!WallpaperService.isVideo(path) || Settings.data.wallpaper.videoPlaybackEnabled) {
+          return path;
+        }
+
+        // Use generated preview path as static fallback when video playback is disabled
+        const previewPath = WallpaperService.buildPreviewPath(path);
+        WallpaperService.ensureVideoPreview(path, previewPath);
+        return previewPath;
       }
     }
   }

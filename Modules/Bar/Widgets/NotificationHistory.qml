@@ -49,7 +49,6 @@ NIconButton {
   baseSize: Style.capsuleHeight
   applyUiScale: false
   density: Settings.data.bar.density
-  customRadius: Style.radiusL
   icon: NotificationService.doNotDisturb ? "bell-off" : "bell"
   tooltipText: NotificationService.doNotDisturb ? I18n.tr("tooltips.open-notification-history-disable-dnd") : I18n.tr("tooltips.open-notification-history-enable-dnd")
   tooltipDirection: BarService.getTooltipDirection()
@@ -121,7 +120,7 @@ NIconButton {
       readonly property int count: computeUnreadCount()
       height: 8
       width: height
-      radius: Style.radiusXS
+      radius: height / 2
       color: Color.mError
       border.color: Color.mSurface
       border.width: Style.borderS

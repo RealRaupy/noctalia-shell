@@ -134,7 +134,7 @@ Popup {
 
   background: Rectangle {
     color: Color.mSurfaceVariant
-    radius: Style.iRadiusL
+    radius: Style.radiusL
     border.color: Color.mOutline
     border.width: Style.borderS
   }
@@ -231,7 +231,7 @@ Popup {
         Layout.fillWidth: true
         Layout.preferredHeight: 45
         color: Color.mSurfaceVariant
-        radius: Style.iRadiusS
+        radius: Style.radiusS
         border.color: Color.mOutline
         border.width: Style.borderS
 
@@ -268,7 +268,7 @@ Popup {
 
           NIconButton {
             icon: filePickerPanel.showSearchBar ? "filepicker-x" : "filepicker-search"
-            tooltipText: filePickerPanel.showSearchBar ? I18n.tr("tooltips.search-close") : I18n.tr("tooltips.search")
+            tooltipText: filePickerPanel.showSearchBar ? "Close Search" : "Search"
             baseSize: Style.baseWidgetSize * 0.8
             onClicked: {
               filePickerPanel.showSearchBar = !filePickerPanel.showSearchBar;
@@ -333,13 +333,13 @@ Popup {
 
           NIconButton {
             icon: filePickerPanel.viewMode ? "filepicker-list" : "filepicker-layout-grid"
-            tooltipText: filePickerPanel.viewMode ? I18n.tr("tooltips.list-view") : I18n.tr("tooltips.grid-view")
+            tooltipText: filePickerPanel.viewMode ? "List View" : "Grid View"
             baseSize: Style.baseWidgetSize * 0.8
             onClicked: filePickerPanel.viewMode = !filePickerPanel.viewMode
           }
           NIconButton {
             icon: root.showHiddenFiles ? "filepicker-eye-off" : "filepicker-eye"
-            tooltipText: root.showHiddenFiles ? I18n.tr("tooltips.hidden-files-hide") : I18n.tr("tooltips.hidden-files-show")
+            tooltipText: root.showHiddenFiles ? "Hide Hidden Files" : "Show Hidden Files"
             baseSize: Style.baseWidgetSize * 0.8
             onClicked: {
               root.showHiddenFiles = !root.showHiddenFiles;
@@ -358,7 +358,7 @@ Popup {
         Layout.fillWidth: true
         Layout.fillHeight: true
         color: Color.mSurface
-        radius: Style.iRadiusM
+        radius: Style.radiusM
         border.color: Color.mOutline
         border.width: Style.borderS
 
@@ -411,7 +411,7 @@ Popup {
             contentItem: Rectangle {
               implicitWidth: 6
               implicitHeight: 100
-              radius: Style.iRadiusM
+              radius: Style.radiusM
               color: Qt.alpha(Color.mHover, 0.8)
               opacity: parent.policy === ScrollBar.AlwaysOn || parent.active ? 1.0 : 0.0
               Behavior on opacity {
@@ -430,7 +430,7 @@ Popup {
               implicitHeight: 100
               color: Color.transparent
               opacity: parent.policy === ScrollBar.AlwaysOn || parent.active ? 0.3 : 0.0
-              radius: (Style.iRadiusM) / 2
+              radius: (Style.radiusM) / 2
               Behavior on opacity {
                 NumberAnimation {
                   duration: Style.animationFast
@@ -473,7 +473,7 @@ Popup {
             width: gridView.itemSize
             height: gridView.cellHeight
             color: Color.transparent
-            radius: Style.iRadiusM
+            radius: Style.radiusM
 
             property bool isSelected: filePickerPanel.currentSelection.includes(model.filePath)
 
@@ -546,7 +546,7 @@ Popup {
                   Rectangle {
                     anchors.fill: parent
                     color: Color.mSurfaceVariant
-                    radius: Style.iRadiusS
+                    radius: Style.radiusS
                     visible: thumbnail.status === Image.Loading
                     NIcon {
                       icon: "filepicker-photo"
@@ -578,7 +578,7 @@ Popup {
                   anchors.margins: Style.marginS
                   width: 24
                   height: 24
-                  radius: Math.min(Style.iRadiusL, width / 2)
+                  radius: width / 2
                   color: Color.mSecondary
                   border.color: Color.mOutline
                   border.width: Style.borderS
@@ -673,7 +673,7 @@ Popup {
                 return Color.mHover;
               return Color.transparent;
             }
-            radius: Style.iRadiusS
+            radius: Style.radiusS
             Behavior on color {
               ColorAnimation {
                 duration: Style.animationFast

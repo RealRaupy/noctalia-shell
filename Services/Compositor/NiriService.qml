@@ -7,8 +7,10 @@ import qs.Services.Keyboard
 Item {
   id: root
 
+  // Sorts floating windows after scrolling ones
   property int floatingWindowPosition: Number.MAX_SAFE_INTEGER
 
+  // Properties that match the facade interface
   property ListModel workspaces: ListModel {}
   property var windows: []
   property int focusedWindowIndex: -1
@@ -17,150 +19,163 @@ Item {
 
   property var keyboardLayouts: []
 
+  // Signals that match the facade interface
   signal workspaceChanged
   signal activeWindowChanged
   signal windowListChanged
   signal displayScalesChanged
 
+  // Initialization
   function initialize() {
-    niriEventStream.connected = true;
-    niriCommandSocket.connected = true;
-
-    startEventStream();
+    niriEventStream.running = true;
     updateWorkspaces();
     updateWindows();
     queryDisplayScales();
     Logger.i("NiriService", "Service started");
   }
 
-  // command from https://yalter.github.io/niri/niri_ipc/enum.Request.html
-  function sendSocketCommand(sock, command) {
-    sock.write(JSON.stringify(command) + "\n");
-    sock.flush();
-  }
-
-  function startEventStream() {
-    sendSocketCommand(niriEventStream, "EventStream");
-  }
-
+  // Update workspaces
   function updateWorkspaces() {
-    sendSocketCommand(niriCommandSocket, "Workspaces");
+    niriWorkspaceProcess.running = true;
   }
 
+  // Update windows
   function updateWindows() {
-    sendSocketCommand(niriCommandSocket, "Windows");
+    niriWindowsProcess.running = true;
   }
 
+  // Query display scales
   function queryDisplayScales() {
-    sendSocketCommand(niriCommandSocket, "Outputs");
+    niriOutputsProcess.running = true;
   }
 
-  function recollectOutputs(outputsData) {
-    const scales = {};
+  // Niri outputs process for display scale detection
+  Process {
+    id: niriOutputsProcess
+    running: false
+    command: ["niri", "msg", "--json", "outputs"]
 
-    for (const outputName in outputsData) {
-      const output = outputsData[outputName];
-      if (output && output.name) {
-        const logical = output.logical || {};
-        const currentModeIdx = output.current_mode || 0;
-        const modes = output.modes || [];
-        const currentMode = modes[currentModeIdx] || {};
-
-        scales[output.name] = {
-          "name": output.name,
-          "scale": logical.scale || 1.0,
-          "width": logical.width || 0,
-          "height": logical.height || 0,
-          "x": logical.x || 0,
-          "y": logical.y || 0,
-          "physical_width": (output.physical_size && output.physical_size[0]) || 0,
-          "physical_height": (output.physical_size && output.physical_size[1]) || 0,
-          "refresh_rate": currentMode.refresh_rate || 0,
-          "vrr_supported": output.vrr_supported || false,
-          "vrr_enabled": output.vrr_enabled || false,
-          "transform": logical.transform || "Normal"
-        };
-      }
-    }
-
-    if (CompositorService && CompositorService.onDisplayScalesUpdated) {
-      CompositorService.onDisplayScalesUpdated(scales);
-    }
-  }
-
-  function recollectWorkspaces(workspacesData) {
-    const workspacesList = [];
-
-    for (const ws of workspacesData) {
-      workspacesList.push({
-                            "id": ws.id,
-                            "idx": ws.idx,
-                            "name": ws.name || "",
-                            "output": ws.output || "",
-                            "isFocused": ws.is_focused === true,
-                            "isActive": ws.is_active === true,
-                            "isUrgent": ws.is_urgent === true,
-                            "isOccupied": ws.active_window_id ? true : false
-                          });
-    }
-
-    workspacesList.sort((a, b) => {
-                          if (a.output !== b.output) {
-                            return a.output.localeCompare(b.output);
-                          }
-                          return a.idx - b.idx;
-                        });
-
-    workspaces.clear();
-    for (var i = 0; i < workspacesList.length; i++) {
-      workspaces.append(workspacesList[i]);
-    }
-
-    workspaceChanged();
-  }
-
-  Socket {
-    id: niriCommandSocket
-    path: Quickshell.env("NIRI_SOCKET")
-    connected: false
-
-    parser: SplitParser {
+    stdout: SplitParser {
       onRead: function (line) {
         try {
-          const data = JSON.parse(line);
+          const outputsData = JSON.parse(line);
+          const scales = {};
 
-          if (data && data.Ok) {
-            const res = data.Ok;
-            if (res.Windows) {
-              recollectWindows(res.Windows);
-            } else if (res.Outputs) {
-              recollectOutputs(res.Outputs);
-            } else if (res.Workspaces) {
-              recollectWorkspaces(res.Workspaces);
+          // Niri returns an object with display names as keys
+          for (const outputName in outputsData) {
+            const output = outputsData[outputName];
+            if (output && output.name) {
+              const logical = output.logical || {};
+              const currentModeIdx = output.current_mode || 0;
+              const modes = output.modes || [];
+              const currentMode = modes[currentModeIdx] || {};
+
+              scales[output.name] = {
+                "name": output.name,
+                "scale": logical.scale || 1.0,
+                "width": logical.width || 0,
+                "height": logical.height || 0,
+                "x": logical.x || 0,
+                "y": logical.y || 0,
+                "physical_width": (output.physical_size && output.physical_size[0]) || 0,
+                "physical_height": (output.physical_size && output.physical_size[1]) || 0,
+                "refresh_rate": currentMode.refresh_rate || 0,
+                "vrr_supported": output.vrr_supported || false,
+                "vrr_enabled": output.vrr_enabled || false,
+                "transform": logical.transform || "Normal"
+              };
             }
-          } else {
-            Logger.e("NiriService", "Niri returned an error:", data.Err, line);
+          }
+
+          // Notify CompositorService (it will emit displayScalesChanged)
+          if (CompositorService && CompositorService.onDisplayScalesUpdated) {
+            CompositorService.onDisplayScalesUpdated(scales);
           }
         } catch (e) {
-          Logger.e("NiriService", "Failed to parse data from socket:", e, line);
-          return;
+          Logger.e("NiriService", "Failed to parse outputs:", e, line);
         }
       }
     }
   }
 
-  Socket {
-    id: niriEventStream
-    path: Quickshell.env("NIRI_SOCKET")
-    connected: false
+  // Niri workspace process
+  Process {
+    id: niriWorkspaceProcess
+    running: false
+    command: ["niri", "msg", "--json", "workspaces"]
 
-    parser: SplitParser {
+    stdout: SplitParser {
+      onRead: function (line) {
+        try {
+          const workspacesData = JSON.parse(line);
+          const workspacesList = [];
+
+          for (const ws of workspacesData) {
+            workspacesList.push({
+                                  "id": ws.id,
+                                  "idx": ws.idx,
+                                  "name": ws.name || "",
+                                  "output": ws.output || "",
+                                  "isFocused": ws.is_focused === true,
+                                  "isActive": ws.is_active === true,
+                                  "isUrgent": ws.is_urgent === true,
+                                  "isOccupied": ws.active_window_id ? true : false
+                                });
+          }
+
+          // Sort workspaces by output, then by index
+          workspacesList.sort((a, b) => {
+                                if (a.output !== b.output) {
+                                  return a.output.localeCompare(b.output);
+                                }
+                                return a.idx - b.idx;
+                              });
+
+          // Update the workspaces ListModel
+          workspaces.clear();
+          for (var i = 0; i < workspacesList.length; i++) {
+            workspaces.append(workspacesList[i]);
+          }
+
+          workspaceChanged();
+        } catch (e) {
+          Logger.e("NiriService", "Failed to parse workspaces:", e, line);
+        }
+      }
+    }
+  }
+
+  // Niri windows process
+  Process {
+    id: niriWindowsProcess
+    running: false
+    command: ["niri", "msg", "--json", "windows"]
+
+    stdout: SplitParser {
+      onRead: function (line) {
+        try {
+          const windowsData = JSON.parse(line);
+          recollectWindows(windowsData);
+        } catch (e) {
+          Logger.e("NiriService", "Failed to parse windows:", e, line);
+        }
+      }
+    }
+  }
+
+  // Niri event stream process
+  Process {
+    id: niriEventStream
+    running: false
+    command: ["niri", "msg", "--json", "event-stream"]
+
+    stdout: SplitParser {
       onRead: data => {
                 try {
                   const event = JSON.parse(data.trim());
 
                   if (event.WorkspacesChanged) {
-                    recollectWorkspaces(event.WorkspacesChanged.workspaces);
+                    updateWorkspaces();
                   } else if (event.WindowOpenedOrChanged) {
                     handleWindowOpenedOrChanged(event.WindowOpenedOrChanged);
                   } else if (event.WindowClosed) {
@@ -191,6 +206,7 @@ Item {
     }
   }
 
+  // Utility functions
   function getWindowPosition(layout) {
     if (layout.pos_in_scrolling_layout) {
       return {
@@ -226,6 +242,10 @@ Item {
     };
   }
 
+  // Sort windows
+  // 1. by workspace ID
+  // 2. by position X
+  // 3. by position Y
   function compareWindows(a, b) {
     if (a.workspaceId !== b.workspaceId) {
       return a.workspaceId - b.workspaceId;
@@ -255,6 +275,7 @@ Item {
     activeWindowChanged();
   }
 
+  // Event handlers
   function handleWindowOpenedOrChanged(eventData) {
     try {
       const windowData = eventData.window;
@@ -262,16 +283,20 @@ Item {
       const newWindow = getWindowData(windowData);
 
       if (existingIndex >= 0) {
+        // Update existing window
         windows[existingIndex] = newWindow;
       } else {
+        // Add new window
         windows.push(newWindow);
       }
       windows.sort(compareWindows);
 
+      // Update focused window index if this window is focused
       if (newWindow.isFocused) {
         const oldFocusedIndex = focusedWindowIndex;
         focusedWindowIndex = windows.findIndex(w => w.id === windowData.id);
 
+        // Only emit activeWindowChanged if the focused window actually changed
         if (oldFocusedIndex !== focusedWindowIndex) {
           if (oldFocusedIndex >= 0 && oldFocusedIndex < windows.length) {
             windows[oldFocusedIndex].isFocused = false;
@@ -292,13 +317,16 @@ Item {
       const windowIndex = windows.findIndex(w => w.id === windowId);
 
       if (windowIndex >= 0) {
+        // If this was the focused window, clear focus
         if (windowIndex === focusedWindowIndex) {
           focusedWindowIndex = -1;
           activeWindowChanged();
         } else if (focusedWindowIndex > windowIndex) {
+          // Adjust focused window index if needed
           focusedWindowIndex--;
         }
 
+        // Remove the window
         windows.splice(windowIndex, 1);
         windowListChanged();
       }
@@ -391,6 +419,7 @@ Item {
     }
   }
 
+  // Public functions
   function switchToWorkspace(workspace) {
     try {
       Quickshell.execDetached(["niri", "msg", "action", "focus-workspace", workspace.idx.toString()]);

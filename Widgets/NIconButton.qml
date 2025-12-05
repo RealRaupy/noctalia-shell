@@ -24,7 +24,6 @@ Rectangle {
   property color colorFgHover: Color.mOnHover
   property color colorBorder: Color.mOutline
   property color colorBorderHover: Color.mOutline
-  property real customRadius: -1 // -1 means use default (iRadiusL), otherwise use this value
 
   signal entered
   signal exited
@@ -38,7 +37,7 @@ Rectangle {
 
   opacity: root.enabled ? Style.opacityFull : Style.opacityMedium
   color: root.enabled && root.hovering ? colorBgHover : colorBg
-  radius: Math.min((customRadius >= 0 ? customRadius : Style.iRadiusL), width / 2)
+  radius: width * 0.5
   border.color: root.enabled && root.hovering ? colorBorderHover : colorBorder
   border.width: Style.borderS
 

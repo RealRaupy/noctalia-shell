@@ -19,7 +19,7 @@ SmartPanel {
   property bool localInputVolumeChanging: false
   property int lastSourceId: -1
 
-  preferredWidth: Math.round(420 * Style.uiScaleRatio)
+  preferredWidth: Math.round(340 * Style.uiScaleRatio)
   preferredHeight: Math.round(420 * Style.uiScaleRatio)
 
   // Reset local volume when device changes - use current device's volume
@@ -157,7 +157,6 @@ SmartPanel {
             tooltipText: I18n.tr("tooltips.output-muted")
             baseSize: Style.baseWidgetSize * 0.8
             onClicked: {
-              AudioService.suppressOutputOSD();
               AudioService.setOutputMuted(!AudioService.muted);
             }
           }
@@ -167,7 +166,6 @@ SmartPanel {
             tooltipText: I18n.tr("tooltips.input-muted")
             baseSize: Style.baseWidgetSize * 0.8
             onClicked: {
-              AudioService.suppressInputOSD();
               AudioService.setInputMuted(!AudioService.inputMuted);
             }
           }

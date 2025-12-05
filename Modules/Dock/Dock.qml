@@ -97,48 +97,6 @@ Loader {
         }
       }
 
-      // Helper function to normalize app IDs for case-insensitive matching
-      function normalizeAppId(appId) {
-        if (!appId || typeof appId !== 'string')
-          return "";
-        return appId.toLowerCase().trim();
-      }
-
-      // Helper function to check if an app ID matches a pinned app (case-insensitive)
-      function isAppIdPinned(appId, pinnedApps) {
-        if (!appId || !pinnedApps || pinnedApps.length === 0)
-          return false;
-        const normalizedId = normalizeAppId(appId);
-        return pinnedApps.some(pinnedId => normalizeAppId(pinnedId) === normalizedId);
-      }
-
-      // Helper function to get app name from desktop entry
-      function getAppNameFromDesktopEntry(appId) {
-        if (!appId)
-          return appId;
-
-        try {
-          if (typeof DesktopEntries !== 'undefined' && DesktopEntries.heuristicLookup) {
-            const entry = DesktopEntries.heuristicLookup(appId);
-            if (entry && entry.name) {
-              return entry.name;
-            }
-          }
-
-          if (typeof DesktopEntries !== 'undefined' && DesktopEntries.byId) {
-            const entry = DesktopEntries.byId(appId);
-            if (entry && entry.name) {
-              return entry.name;
-            }
-          }
-        } catch (e)
-          // Fall through to return original appId
-        {}
-
-        // Return original appId if we can't find a desktop entry
-        return appId;
-      }
-
       // Function to update the combined dock apps model
       function updateDockApps() {
         const runningApps = ToplevelManager ? (ToplevelManager.toplevels.values || []) : [];
@@ -150,36 +108,28 @@ Loader {
         // 1. First pass: Add all running apps (both pinned and non-pinned) in their current order
         runningApps.forEach(toplevel => {
                               if (toplevel && toplevel.appId && !(Settings.data.dock.onlySameOutput && toplevel.screens && !toplevel.screens.includes(modelData))) {
-                                const isPinned = isAppIdPinned(toplevel.appId, pinnedApps);
+                                const isPinned = pinnedApps.includes(toplevel.appId);
                                 const appType = isPinned ? "pinned-running" : "running";
-
-                                // Use desktop entry name if title is "Loading..." or empty
-                                let appTitle = toplevel.title;
-                                if (!appTitle || appTitle === "Loading..." || appTitle.trim() === "") {
-                                  appTitle = getAppNameFromDesktopEntry(toplevel.appId);
-                                }
 
                                 combined.push({
                                                 "type": appType,
                                                 "toplevel": toplevel,
                                                 "appId": toplevel.appId,
-                                                "title": appTitle
+                                                "title": toplevel.title
                                               });
-                                processedAppIds.add(normalizeAppId(toplevel.appId));
+                                processedAppIds.add(toplevel.appId);
                               }
                             });
 
         // 2. Second pass: Add non-running pinned apps at the end
         pinnedApps.forEach(pinnedAppId => {
-                             const normalizedPinnedId = normalizeAppId(pinnedAppId);
-                             if (!processedAppIds.has(normalizedPinnedId)) {
-                               // Pinned app that is not running - get name from desktop entry
-                               const appName = getAppNameFromDesktopEntry(pinnedAppId);
+                             if (!processedAppIds.has(pinnedAppId)) {
+                               // Pinned app that is not running
                                combined.push({
                                                "type": "pinned",
                                                "toplevel": null,
                                                "appId": pinnedAppId,
-                                               "title": appName
+                                               "title": pinnedAppId
                                              });
                              }
                            });
@@ -349,7 +299,7 @@ Loader {
               height: Math.round(iconSize * 1.5)
               color: Qt.alpha(Color.mSurface, Settings.data.dock.backgroundOpacity)
               anchors.centerIn: parent
-              radius: Style.radiusL
+              radius: height * 0.5 * Settings.data.dock.radiusRatio
               border.width: Style.borderS
               border.color: Qt.alpha(Color.mOutline, Settings.data.dock.backgroundOpacity)
 
@@ -414,21 +364,7 @@ Loader {
                       property bool isActive: modelData.toplevel && ToplevelManager.activeToplevel && ToplevelManager.activeToplevel === modelData.toplevel
                       property bool hovered: appMouseArea.containsMouse
                       property string appId: modelData ? modelData.appId : ""
-                      property string appTitle: {
-                        if (!modelData)
-                          return "";
-                        // For running apps, use the toplevel title directly (reactive)
-                        if (modelData.toplevel) {
-                          const toplevelTitle = modelData.toplevel.title || "";
-                          // If title is "Loading..." or empty, use desktop entry name
-                          if (!toplevelTitle || toplevelTitle === "Loading..." || toplevelTitle.trim() === "") {
-                            return root.getAppNameFromDesktopEntry(modelData.appId) || modelData.appId;
-                          }
-                          return toplevelTitle;
-                        }
-                        // For pinned apps that aren't running, use the stored title
-                        return modelData.title || modelData.appId || "";
-                      }
+                      property string appTitle: modelData ? (modelData.title || modelData.appId) : ""
                       property bool isRunning: modelData && (modelData.type === "running" || modelData.type === "pinned-running")
 
                       // Listen for the toplevel being closed
@@ -615,41 +551,7 @@ Loader {
                               modelData.toplevel.activate();
                             } else if (modelData?.appId) {
                               // Pinned app not running - launch it
-                              const app = DesktopEntries.byId(modelData.appId);
-
-                              if (Settings.data.appLauncher.customLaunchPrefixEnabled && Settings.data.appLauncher.customLaunchPrefix) {
-                                // Use custom launch prefix
-                                const prefix = Settings.data.appLauncher.customLaunchPrefix.split(" ");
-
-                                if (app.runInTerminal) {
-                                  const terminal = Settings.data.appLauncher.terminalCommand.split(" ");
-                                  const command = prefix.concat(terminal.concat(app.command));
-                                  Quickshell.execDetached(command);
-                                } else {
-                                  const command = prefix.concat(app.command);
-                                  Quickshell.execDetached(command);
-                                }
-                              } else if (Settings.data.appLauncher.useApp2Unit && app.id) {
-                                Logger.d("Dock", `Using app2unit for: ${app.id}`);
-                                if (app.runInTerminal)
-                                  Quickshell.execDetached(["app2unit", "--", app.id + ".desktop"]);
-                                else
-                                  Quickshell.execDetached(["app2unit", "--"].concat(app.command));
-                              } else {
-                                // Fallback logic when app2unit is not used
-                                if (app.runInTerminal) {
-                                  // If app.execute() fails for terminal apps, we handle it manually.
-                                  Logger.d("Dock", "Executing terminal app manually: " + app.name);
-                                  const terminal = Settings.data.appLauncher.terminalCommand.split(" ");
-                                  const command = terminal.concat(app.command);
-                                  Quickshell.execDetached(command);
-                                } else if (app.execute) {
-                                  // Default execution for GUI apps
-                                  app.execute();
-                                } else {
-                                  Logger.w("Dock", `Could not launch: ${app.name}. No valid launch method.`);
-                                }
-                              }
+                              Quickshell.execDetached(["gtk-launch", modelData.appId]);
                             }
                           }
                         }

@@ -24,51 +24,10 @@ PopupWindow {
 
   signal requestClose
 
-  property real menuContentWidth: 160
-
-  implicitWidth: menuContentWidth + (Style.marginM * 2)
+  implicitWidth: Math.max(160, contextMenuColumn.implicitWidth)
   implicitHeight: contextMenuColumn.implicitHeight + (Style.marginM * 2)
   color: Color.transparent
   visible: false
-
-  // Hidden text element for measuring text width
-  Text {
-    id: textMeasure
-    visible: false
-    font.pointSize: Style.fontSizeS
-    font.family: "Sans Serif" // Match your NText font if different
-    wrapMode: Text.NoWrap
-    elide: Text.ElideNone
-  }
-
-  // Calculate the maximum width needed for all menu items
-  function calculateMenuWidth() {
-    let maxWidth = 0; // Start with 0, we'll apply minimum later
-    if (root.items && root.items.length > 0) {
-      for (let i = 0; i < root.items.length; i++) {
-        const item = root.items[i];
-        if (item && item.text) {
-          // Calculate width: margins + icon (if present) + spacing + text width
-          let itemWidth = Style.marginS * 2; // left and right margins
-
-          if (item.icon && item.icon !== "") {
-            itemWidth += Style.fontSizeL + Style.marginS; // icon + spacing
-          }
-
-          // Measure actual text width
-          textMeasure.text = item.text;
-          const textWidth = textMeasure.contentWidth;
-          itemWidth += textWidth;
-
-          if (itemWidth > maxWidth) {
-            maxWidth = itemWidth;
-          }
-        }
-      }
-    }
-    // Apply a reasonable minimum width (like 120px)
-    menuContentWidth = Math.max(120, maxWidth);
-  }
 
   function initItems() {
     // Is this a running app?
@@ -110,8 +69,7 @@ PopupWindow {
     }
 
     // Create a menu entry for each app-specific action definied in its .desktop file
-    if (typeof DesktopEntries !== 'undefined' && DesktopEntries.byId && root.toplevel?.appId) {
-      const appId = root.toplevel.appId;
+    if (typeof DesktopEntries !== 'undefined' && DesktopEntries.byId) {
       const entry = (DesktopEntries.heuristicLookup) ? DesktopEntries.heuristicLookup(appId) : DesktopEntries.byId(appId);
       if (entry != null) {
         entry.actions.forEach(function (action) {
@@ -127,48 +85,6 @@ PopupWindow {
     }
 
     root.items = next;
-    // Force width recalculation when items change
-    calculateMenuWidth();
-  }
-
-  // Helper function to normalize app IDs for case-insensitive matching
-  function normalizeAppId(appId) {
-    if (!appId || typeof appId !== 'string')
-      return "";
-    return appId.toLowerCase().trim();
-  }
-
-  // Helper function to get desktop entry ID from an app ID
-  function getDesktopEntryId(appId) {
-    if (!appId)
-      return appId;
-
-    // Try to find the desktop entry using heuristic lookup
-    if (typeof DesktopEntries !== 'undefined' && DesktopEntries.heuristicLookup) {
-      try {
-        const entry = DesktopEntries.heuristicLookup(appId);
-        if (entry && entry.id) {
-          return entry.id;
-        }
-      } catch (e)
-        // Fall through to return original appId
-      {}
-    }
-
-    // Try direct lookup
-    if (typeof DesktopEntries !== 'undefined' && DesktopEntries.byId) {
-      try {
-        const entry = DesktopEntries.byId(appId);
-        if (entry && entry.id) {
-          return entry.id;
-        }
-      } catch (e)
-        // Fall through to return original appId
-      {}
-    }
-
-    // Return original appId if we can't find a desktop entry
-    return appId;
   }
 
   // Helper functions for pin/unpin functionality
@@ -176,30 +92,21 @@ PopupWindow {
     if (!appId)
       return false;
     const pinnedApps = Settings.data.dock.pinnedApps || [];
-    const normalizedId = normalizeAppId(appId);
-    return pinnedApps.some(pinnedId => normalizeAppId(pinnedId) === normalizedId);
+    return pinnedApps.includes(appId);
   }
 
   function toggleAppPin(appId) {
     if (!appId)
       return;
-
-    // Get the desktop entry ID for consistent pinning
-    const desktopEntryId = getDesktopEntryId(appId);
-    const normalizedId = normalizeAppId(desktopEntryId);
-
     let pinnedApps = (Settings.data.dock.pinnedApps || []).slice(); // Create a copy
-
-    // Find existing pinned app with case-insensitive matching
-    const existingIndex = pinnedApps.findIndex(pinnedId => normalizeAppId(pinnedId) === normalizedId);
-    const isPinned = existingIndex >= 0;
+    const isPinned = pinnedApps.includes(appId);
 
     if (isPinned) {
       // Unpin: remove from array
-      pinnedApps.splice(existingIndex, 1);
+      pinnedApps = pinnedApps.filter(id => id !== appId);
     } else {
-      // Pin: add desktop entry ID to array
-      pinnedApps.push(desktopEntryId);
+      // Pin: add to array
+      pinnedApps.push(appId);
     }
 
     // Update the settings
@@ -215,28 +122,17 @@ PopupWindow {
       return;
     }
 
-    // First hide completely
-    visible = false;
-
-    // Then set up new data
     anchorItem = item;
     toplevel = toplevelData;
     initItems();
-
-    // Force a complete re-evaluation by waiting for the next frame
-    Qt.callLater(() => {
-                   Qt.callLater(() => {
-                                  visible = true;
-                                  canAutoClose = false;
-                                  gracePeriodTimer.restart();
-                                });
-                 });
+    visible = true;
+    canAutoClose = false;
+    gracePeriodTimer.restart();
   }
 
   function hide() {
     visible = false;
     root.items.length = 0;
-    menuContentWidth = 120; // Reset to minimum
   }
 
   // Helper function to determine which menu item is under the mouse
@@ -344,9 +240,7 @@ PopupWindow {
 
     ColumnLayout {
       id: contextMenuColumn
-      anchors.left: parent.left
-      anchors.right: parent.right
-      anchors.top: parent.top
+      anchors.fill: parent
       anchors.margins: Style.marginM
       spacing: 0
 
@@ -359,28 +253,25 @@ PopupWindow {
           color: root.hoveredItem === index ? Color.mHover : Color.transparent
           radius: Style.radiusXS
 
-          Row {
-            id: rowLayout
+          RowLayout {
             anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
             anchors.leftMargin: Style.marginS
-            anchors.rightMargin: Style.marginS
+            anchors.verticalCenter: parent.verticalCenter
             spacing: Style.marginS
 
             NIcon {
               icon: modelData.icon
               pointSize: Style.fontSizeL
               color: root.hoveredItem === index ? Color.mOnHover : Color.mOnSurfaceVariant
-              visible: icon !== ""
-              anchors.verticalCenter: parent.verticalCenter
+              Layout.alignment: Qt.AlignVCenter
             }
 
             NText {
               text: modelData.text
               pointSize: Style.fontSizeS
               color: root.hoveredItem === index ? Color.mOnHover : Color.mOnSurfaceVariant
-              anchors.verticalCenter: parent.verticalCenter
+              Layout.alignment: Qt.AlignVCenter
+              elide: Text.ElideRight
             }
           }
         }

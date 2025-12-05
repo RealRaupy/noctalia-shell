@@ -3,10 +3,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../Helpers/QtObj2JS.js" as QtObj2JS
-import qs.Services.Power
-import qs.Services.System
-import qs.Services.UI
 
 // Centralized shell state management for small cache files
 Singleton {
@@ -61,6 +57,9 @@ Singleton {
                                         schemes: [],
                                         timestamp: 0
                                       })
+
+      // WallpaperService: current wallpapers per screen
+      property var wallpapers: ({})
     }
 
     onLoaded: {
@@ -83,7 +82,7 @@ Singleton {
   // Debounced save timer
   Timer {
     id: saveTimer
-    interval: 500
+    interval: 300
     onTriggered: performSave()
   }
 
@@ -171,29 +170,13 @@ Singleton {
     };
   }
 
-  // -----------------------------------------------------
-  function buildStateSnapshot() {
-    try {
-      const settingsData = QtObj2JS.qtObjectToPlainObject(Settings.data);
-      const shellStateData = ShellState?.data ? QtObj2JS.qtObjectToPlainObject(ShellState.data) || {} : {};
+  // Wallpapers (WallpaperService)
+  function setWallpapers(wallpapersData) {
+    adapter.wallpapers = wallpapersData;
+    save();
+  }
 
-      return {
-        settings: settingsData,
-        state: {
-          doNotDisturb: NotificationService.doNotDisturb,
-          noctaliaPerformanceMode: PowerProfileService.noctaliaPerformanceMode,
-          barVisible: BarService.isVisible,
-          wallpapers: WallpaperService.currentWallpapers || {},
-          // -------------
-          display: shellStateData.display || {},
-          notificationsState: shellStateData.notificationsState || {},
-          changelogState: shellStateData.changelogState || {},
-          colorSchemesList: shellStateData.colorSchemesList || {}
-        }
-      };
-    } catch (error) {
-      Logger.e("Settings", "Failed to build state snapshot:", error);
-      return null;
-    }
+  function getWallpapers() {
+    return adapter.wallpapers || {};
   }
 }

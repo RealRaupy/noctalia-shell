@@ -24,7 +24,7 @@ ColumnLayout {
     NImageRounded {
       Layout.preferredWidth: 88 * Style.uiScaleRatio
       Layout.preferredHeight: width
-      radius: width / 2
+      radius: width * 0.5
       imagePath: Settings.preprocessPath(Settings.data.general.avatarImage)
       fallbackIcon: "person"
       borderColor: Color.mPrimary
@@ -40,7 +40,7 @@ ColumnLayout {
       text: Settings.data.general.avatarImage
       placeholderText: I18n.tr("placeholders.profile-picture-path")
       buttonIcon: "photo"
-      buttonTooltip: I18n.tr("settings.general.profile.tooltip")
+      buttonTooltip: "Browse for avatar image"
       onInputEditingFinished: Settings.data.general.avatarImage = text
       onButtonClicked: {
         avatarPicker.openFilePicker();

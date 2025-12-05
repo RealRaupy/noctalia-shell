@@ -1,5 +1,5 @@
 {
-  "settingsVersion": 26,
+  "settingsVersion": 25,
   "bar": {
     "position": "top",
     "backgroundOpacity": 1,
@@ -15,13 +15,7 @@
     "widgets": {
       "left": [
         {
-          "icon": "rocket",
-          "id": "CustomButton",
-          "leftClickExec": "qs -c noctalia-shell ipc call launcher toggle"
-        },
-        {
-          "id": "Clock",
-          "usePrimaryColor": false
+          "id": "ControlCenter"
         },
         {
           "id": "SystemMonitor"
@@ -58,7 +52,7 @@
           "id": "Brightness"
         },
         {
-          "id": "ControlCenter"
+          "id": "Clock"
         }
       ]
     }
@@ -70,8 +64,6 @@
     "forceBlackScreenCorners": false,
     "scaleRatio": 1,
     "radiusRatio": 1,
-    "iRadiusRatio": 1,
-    "boxRadiusRatio": 1,
     "screenRadiusRatio": 1,
     "animationSpeed": 1,
     "animationDisabled": false,
@@ -86,8 +78,8 @@
     "allowPanelsOnScreenWithoutBar": true
   },
   "ui": {
-    "fontDefault": "",
-    "fontFixed": "",
+    "fontDefault": "Roboto",
+    "fontFixed": "DejaVu Sans Mono",
     "fontDefaultScale": 1,
     "fontFixedScale": 1,
     "tooltipsEnabled": true,
@@ -110,20 +102,20 @@
   "calendar": {
     "cards": [
       {
-        "enabled": true,
-        "id": "calendar-header-card"
+        "id": "banner-card",
+        "enabled": true
       },
       {
-        "enabled": true,
-        "id": "calendar-month-card"
+        "id": "calendar-card",
+        "enabled": true
       },
       {
-        "enabled": true,
-        "id": "timer-card"
+        "id": "timer-card",
+        "enabled": true
       },
       {
-        "enabled": true,
-        "id": "weather-card"
+        "id": "weather-card",
+        "enabled": true
       }
     ]
   },
@@ -142,12 +134,16 @@
     "enabled": true,
     "overviewEnabled": false,
     "directory": "",
-    "monitorDirectories": [],
     "enableMultiMonitorDirectories": false,
     "recursiveSearch": false,
     "setWallpaperOnAllMonitors": true,
     "fillMode": "crop",
     "fillColor": "#000000",
+    "videoAudioEnabled": true,
+    "videoAudioMuted": false,
+    "videoAudioVolume": 0.35,
+    "steamWallpaperIntegration": false,
+    "useSteamWallpapers": false,
     "randomEnabled": false,
     "randomIntervalSec": 300,
     "transitionDuration": 1500,
@@ -155,18 +151,6 @@
     "transitionEdgeSmoothness": 0.05,
     "panelPosition": "follow_bar",
     "hideWallpaperFilenames": false,
-    "videoPlaybackEnabled": true,
-    "videoAudioMuted": false,
-    "videoAudioVolume": 0.35,
-    "videoAudioMode": "per_monitor",
-    "pauseVideoOnWindows": false,
-    "muteInsteadOfPauseOnWindows": false,
-    "pauseVideoOnWindowsMuteWhitelist": [],
-    "pauseVideoOnWindowsBlacklist": [],
-    "steamWallpaperIntegration": false,
-    "useSteamWallpapers": false,
-    "lockScreenVideoEnabled": true,
-    "lockScreenVideoMuted": false,
     "useWallhaven": false,
     "wallhavenQuery": "",
     "wallhavenSorting": "relevance",
@@ -175,7 +159,9 @@
     "wallhavenPurity": "100",
     "wallhavenResolutionMode": "atleast",
     "wallhavenResolutionWidth": "",
-    "wallhavenResolutionHeight": ""
+    "wallhavenResolutionHeight": "",
+    "defaultWallpaper": "",
+    "monitors": []
   },
   "appLauncher": {
     "enableClipboardHistory": false,
@@ -253,11 +239,6 @@
     "memCriticalThreshold": 90,
     "diskWarningThreshold": 80,
     "diskCriticalThreshold": 90,
-    "cpuPollingInterval": 3000,
-    "tempPollingInterval": 3000,
-    "memPollingInterval": 3000,
-    "diskPollingInterval": 3000,
-    "networkPollingInterval": 3000,
     "useCustomColors": false,
     "warningColor": "",
     "criticalColor": ""
@@ -266,6 +247,7 @@
     "enabled": true,
     "displayMode": "auto_hide",
     "backgroundOpacity": 1,
+    "radiusRatio": 0.1,
     "floatingRatio": 1,
     "size": 1,
     "onlySameOutput": true,
@@ -326,11 +308,7 @@
     "autoHideMs": 2000,
     "overlayLayer": true,
     "backgroundOpacity": 1,
-    "enabledTypes": [
-      0,
-      1,
-      2
-    ],
+    "enabledTypes": [],
     "monitors": []
   },
   "audio": {
@@ -376,8 +354,6 @@
     "spicetify": false,
     "telegram": false,
     "cava": false,
-    "emacs": false,
-    "niri": false,
     "enableUserTemplates": false
   },
   "nightLight": {

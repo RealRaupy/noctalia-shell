@@ -22,7 +22,7 @@ Variants {
     property ListModel notificationModel: NotificationService.activeList
 
     // Always create window (but with 0x0 dimensions when no notifications)
-    active: notificationModel.count > 0 || delayTimer.running
+    active: true
 
     // Keep loader active briefly after last notification to allow animations to complete
     Timer {
@@ -82,14 +82,14 @@ Variants {
         if (barPos !== "left")
           return 0;
         const floatMarginH = isFloating ? Settings.data.bar.marginHorizontal * Style.marginXL : 0;
-        return Style.barHeight + floatMarginH;
+        return floatMarginH;
       }
 
       readonly property int barOffsetRight: {
         if (barPos !== "right")
           return 0;
         const floatMarginH = isFloating ? Settings.data.bar.marginHorizontal * Style.marginXL : 0;
-        return Style.barHeight + floatMarginH;
+        return floatMarginH;
       }
 
       // Anchoring
@@ -104,8 +104,8 @@ Variants {
       margins.left: isLeft ? barOffsetLeft : 0
       margins.right: isRight ? barOffsetRight : 0
 
-      implicitWidth: notifWidth
-      implicitHeight: notificationStack.implicitHeight + Style.marginL
+      implicitWidth: (notificationModel.count > 0 || delayTimer.running) ? notifWidth : 0
+      implicitHeight: (notificationModel.count > 0 || delayTimer.running) ? (notificationStack.implicitHeight + Style.marginL) : 0
 
       property var animateConnection: null
 
@@ -402,7 +402,7 @@ Variants {
                   Layout.preferredWidth: Math.round(40 * Style.uiScaleRatio)
                   Layout.preferredHeight: Math.round(40 * Style.uiScaleRatio)
                   Layout.alignment: Qt.AlignVCenter
-                  radius: Math.min(Style.radiusL, Layout.preferredWidth / 2)
+                  radius: width * 0.5
                   imagePath: model.originalImage || ""
                   borderColor: Color.transparent
                   borderWidth: 0

@@ -17,7 +17,7 @@ Loader {
 
       required property ShellScreen modelData
       property string wallpaper: ""
-      property string wallpaperDisplay: ""
+      property string wallpaperPreview: ""
 
       Component.onCompleted: {
         if (modelData) {
@@ -39,12 +39,7 @@ Loader {
         function onWallpaperChanged(screenName, path) {
           if (screenName === modelData.name) {
             wallpaper = path;
-            updateDisplaySource();
-          }
-        }
-        function onWallpaperPreviewReady(originalPath, previewPath) {
-          if (wallpaper === originalPath) {
-            updateDisplaySource();
+            wallpaperPreview = WallpaperService.getPreviewForDisplay(path);
           }
         }
       }
@@ -57,24 +52,8 @@ Loader {
         const wallpaperPath = WallpaperService.getWallpaper(modelData.name);
         if (wallpaperPath && wallpaperPath !== wallpaper) {
           wallpaper = wallpaperPath;
-          updateDisplaySource();
+          wallpaperPreview = WallpaperService.getPreviewForDisplay(wallpaperPath);
         }
-      }
-
-      function updateDisplaySource() {
-        if (!wallpaper || wallpaper === "") {
-          wallpaperDisplay = "";
-          return;
-        }
-
-        if (WallpaperService.isVideoFile(wallpaper)) {
-          WallpaperService.generateWallpaperPreview(wallpaper);
-          wallpaperDisplay = WallpaperService.getPreviewPath(wallpaper);
-        } else {
-          wallpaperDisplay = wallpaper;
-        }
-
-        bgImage.source = wallpaperDisplay;
       }
 
       color: Color.transparent
@@ -94,7 +73,7 @@ Loader {
         id: bgImage
         anchors.fill: parent
         fillMode: Image.PreserveAspectCrop
-        source: wallpaperDisplay
+        source: wallpaperPreview || wallpaper
         smooth: true
         mipmap: false
         cache: false
@@ -115,6 +94,15 @@ Loader {
           anchors.fill: parent
           color: Settings.data.colorSchemes.darkMode ? Color.mSurface : Color.mOnSurface
           opacity: 0.8
+        }
+      }
+
+      Connections {
+        target: WallpaperService
+        function onWallpaperPreviewReady(originalPath, previewPath) {
+          if (originalPath === wallpaper) {
+            wallpaperPreview = WallpaperService.getPreviewForDisplay(wallpaper);
+          }
         }
       }
     }

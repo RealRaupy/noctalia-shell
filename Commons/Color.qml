@@ -49,7 +49,7 @@ Singleton {
   readonly property color white: "#ffffff"
 
   // --------------------------------
-  // Default colors: Rose Pine
+  // Default colors: RosePine
   QtObject {
     id: defaultColors
 

@@ -8,7 +8,6 @@ import qs.Commons
 import qs.Services.Compositor
 import qs.Services.Hardware
 import qs.Services.Media
-import qs.Services.Noctalia
 import qs.Services.Power
 import qs.Services.System
 import qs.Services.Theming
@@ -47,8 +46,8 @@ Item {
     target: "calendar"
     function toggle() {
       root.withTargetScreen(screen => {
-                              var clockPanel = PanelService.getPanel("clockPanel", screen);
-                              clockPanel?.toggle(null, "Clock");
+                              var calendarPanel = PanelService.getPanel("calendarPanel", screen);
+                              calendarPanel?.toggle(null, "Clock");
                             });
     }
   }
@@ -79,10 +78,6 @@ Item {
       NotificationService.dismissOldestActive();
     }
 
-    function removeOldestHistory() {
-      NotificationService.removeOldestHistory();
-    }
-
     function dismissAll() {
       NotificationService.dismissAllActive();
     }
@@ -100,7 +95,7 @@ Item {
     function toggle() {
       root.withTargetScreen(screen => {
                               var launcherPanel = PanelService.getPanel("launcherPanel", screen);
-                              if (!launcherPanel?.isPanelOpen || (launcherPanel?.isPanelOpen && !launcherPanel?.activePlugin))
+                              if (!launcherPanel?.windowActive || (launcherPanel?.windowActive && !launcherPanel?.activePlugin))
                               launcherPanel?.toggle();
                               launcherPanel?.setSearchText("");
                             });
@@ -108,27 +103,24 @@ Item {
     function clipboard() {
       root.withTargetScreen(screen => {
                               var launcherPanel = PanelService.getPanel("launcherPanel", screen);
-                              if (!launcherPanel?.isPanelOpen) {
-                                launcherPanel?.toggle();
-                              }
+                              if (!launcherPanel?.windowActive || (launcherPanel?.windowActive && launcherPanel?.searchText.startsWith(">clip")))
+                              launcherPanel?.toggle();
                               launcherPanel?.setSearchText(">clip ");
                             });
     }
     function calculator() {
       root.withTargetScreen(screen => {
                               var launcherPanel = PanelService.getPanel("launcherPanel", screen);
-                              if (!launcherPanel?.isPanelOpen) {
-                                launcherPanel?.toggle();
-                              }
+                              if (!launcherPanel?.windowActive || (launcherPanel?.windowActive && launcherPanel?.searchText.startsWith(">calc")))
+                              launcherPanel?.toggle();
                               launcherPanel?.setSearchText(">calc ");
                             });
     }
     function emoji() {
       root.withTargetScreen(screen => {
                               var launcherPanel = PanelService.getPanel("launcherPanel", screen);
-                              if (!launcherPanel?.isPanelOpen) {
-                                launcherPanel?.toggle();
-                              }
+                              if (!launcherPanel?.windowActive || (launcherPanel?.windowActive && launcherPanel?.searchText.startsWith(">emoji")))
+                              launcherPanel?.toggle();
                               launcherPanel?.setSearchText(">emoji ");
                             });
     }
@@ -370,29 +362,7 @@ Item {
     }
   }
 
-  IpcHandler {
-    target: "state"
-
-    // Returns all settings and shell state as JSON
-    function all(): string {
-      try {
-        var snapshot = ShellState.buildStateSnapshot();
-        if (!snapshot) {
-          throw new Error("State snapshot unavailable");
-        }
-        return JSON.stringify(snapshot, null, 2);
-      } catch (error) {
-        Logger.e("IPC", "Failed to serialize state:", error);
-        return JSON.stringify({
-                                "error": "Failed to serialize state: " + error
-                              }, null, 2);
-      }
-    }
-  }
-
-  // -------------------------------------------------------------------
   // Queue an IPC panel operation - will execute when screen is detected
-  // -------------------------------------------------------------------
   function withTargetScreen(callback) {
     if (pendingCallback) {
       Logger.w("IPC", "Another IPC call is pending, ignoring new call");
@@ -409,6 +379,27 @@ Item {
       screenDetectorLoader.active = true;
     }
   }
+
+  IpcHandler {
+    target: "state"
+
+    // Returns all settings and shell state as JSON
+    function all(): string {
+      try {
+        var snapshot = Settings.buildStateSnapshot();
+        if (!snapshot) {
+          throw new Error("State snapshot unavailable");
+        }
+        return JSON.stringify(snapshot, null, 2);
+      } catch (error) {
+        Logger.e("IPC", "Failed to serialize state:", error);
+        return JSON.stringify({
+                                "error": "Failed to serialize state: " + error
+                              }, null, 2);
+      }
+    }
+  }
+
   /**
   * For IPC calls on multi-monitors setup that will open panels on screen,
   * we need to open a QS PanelWindow and wait for it's "screen" property to stabilize.
@@ -455,7 +446,6 @@ Item {
       implicitHeight: 0
       color: Color.transparent
       WlrLayershell.exclusionMode: ExclusionMode.Ignore
-      WlrLayershell.namespace: "noctalia-ipc-screen-detector"
       mask: Region {}
 
       onScreenChanged: {
@@ -464,6 +454,4 @@ Item {
       }
     }
   }
-  // -------------------------------------------------------------------
-  // -------------------------------------------------------------------
 }

@@ -37,7 +37,7 @@ RowLayout {
 
     implicitWidth: Math.round(root.baseSize)
     implicitHeight: Math.round(root.baseSize)
-    radius: Style.iRadiusXS
+    radius: Style.radiusXS
     color: root.checked ? root.activeColor : Color.mSurface
     border.color: Color.mOutline
     border.width: Style.borderS

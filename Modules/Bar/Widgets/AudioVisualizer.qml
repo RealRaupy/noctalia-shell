@@ -171,7 +171,6 @@ Item {
       fillColor: root.fillColor
       showMinimumSignal: true
       vertical: root.isVerticalBar
-      barPosition: Settings.data.bar.position
     }
   }
 

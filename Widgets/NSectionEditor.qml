@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
 import qs.Commons
-import qs.Services.Noctalia
 import qs.Widgets
 
 NBox {
@@ -19,10 +18,8 @@ NBox {
   property var widgetRegistry: null
   property string settingsDialogComponent: "BarWidgetSettingsDialog.qml"
 
-  readonly property int gridColumns: 3
   readonly property real miniButtonSize: Style.baseWidgetSize * 0.65
-  readonly property bool isAtMaxCapacity: maxWidgets >= 0 && widgetModel.length >= maxWidgets
-  readonly property real widgetItemHeight: Style.baseWidgetSize * 1.3 * Style.uiScaleRatio
+  readonly property bool isAtMaxCapacity: maxWidgets > 0 && widgetModel.length >= maxWidgets
 
   signal addWidget(string widgetId, string section)
   signal removeWidget(string section, int index)
@@ -31,18 +28,9 @@ NBox {
   signal moveWidget(string fromSection, int index, string toSection)
   signal dragPotentialStarted
   signal dragPotentialEnded
-  signal openPluginSettingsRequested(var pluginManifest)
 
   color: Color.mSurface
   Layout.fillWidth: true
-
-  // Calculate width to fit gridColumns widgets with spacing
-  function calculateWidgetWidth(gridWidth) {
-    var columnSpacing = (root.gridColumns - 1) * Style.marginM;
-    var widgetWidth = (gridWidth - columnSpacing) / root.gridColumns;
-    return Math.floor(widgetWidth);
-  }
-
   Layout.minimumHeight: {
     // header + minimal content area
     var absoluteMin = (Style.marginL * 2) + (Style.fontSizeL * 2) + Style.marginM + (65 * Style.uiScaleRatio);
@@ -52,48 +40,39 @@ NBox {
       return absoluteMin;
     }
 
-    // Calculate rows based on grid layout
-    // Use actual parent width if available, otherwise estimate
-    var availableWidth = (parent && parent.width > 0) ? (parent.width - (Style.marginL * 2)) : 400;
-    var rows = Math.ceil(widgetCount / root.gridColumns);
-
-    // Calculate widget width for height calculation
-    var containerWidth = availableWidth;
-    var widgetWidth = calculateWidgetWidth(containerWidth);
+    // Calculate rows based on estimated widget layout
+    var availableWidth = parent.width - (Style.marginL * 2);
+    var avgWidgetWidth = 120 * Style.uiScaleRatio; // More accurate estimate
+    var widgetsPerRow = Math.max(1, Math.floor(availableWidth / avgWidgetWidth));
+    var rows = Math.ceil(widgetCount / widgetsPerRow);
 
     // Header height + spacing + (rows * widget height) + (spacing between rows) + margins
     var headerHeight = Style.fontSizeL * 2;
-    // Account for grid margins and add buffer to prevent overlap
-    var gridTopMargin = Style.marginXXS;
-    var gridBottomMargin = Style.marginXXS;
-    var widgetAreaHeight = gridTopMargin + (rows * widgetItemHeight) + ((rows - 1) * Style.marginS) + gridBottomMargin + Style.marginM;
+    var widgetHeight = Style.baseWidgetSize * 1.15 * Style.uiScaleRatio;
+    var widgetAreaHeight = ((rows + 1) * widgetHeight) + ((rows - 1) * Style.marginS);
 
     return Math.max(absoluteMin, (Style.marginL * 2) + headerHeight + Style.marginM + widgetAreaHeight);
   }
 
   // Generate widget color from name checksum
   function getWidgetColor(widget) {
-    if (widget.id.startsWith('plugin:')) {
+    const totalSum = JSON.stringify(widget).split('').reduce((acc, character) => {
+                                                               return acc + character.charCodeAt(0);
+                                                             }, 0);
+    switch (totalSum % 6) {
+    case 0:
+      return [Color.mPrimary, Color.mOnPrimary];
+    case 1:
       return [Color.mSecondary, Color.mOnSecondary];
+    case 2:
+      return [Color.mTertiary, Color.mOnTertiary];
+    case 3:
+      return [Color.mError, Color.mOnError];
+    case 4:
+      return [Color.mOnSurface, Color.mSurface];
+    case 5:
+      return [Color.mOnSurfaceVariant, Color.mSurfaceVariant];
     }
-    return [Color.mPrimary, Color.mOnPrimary];
-  }
-
-  // Check if widget has settings (either core widget with allowUserSettings or plugin with settings entry point)
-  function widgetHasSettings(widgetId) {
-    // Check if it's a core widget with user settings
-    if (root.widgetRegistry && root.widgetRegistry.widgetHasUserSettings(widgetId)) {
-      return true;
-    }
-
-    // Check if it's a plugin with settings
-    if (root.widgetRegistry && root.widgetRegistry.isPluginWidget(widgetId)) {
-      var pluginId = widgetId.replace("plugin:", "");
-      var manifest = PluginRegistry.getPluginManifest(pluginId);
-      return manifest?.entryPoints?.settings !== undefined;
-    }
-
-    return false;
   }
 
   ColumnLayout {
@@ -114,8 +93,8 @@ NBox {
 
       // Widget count indicator (when max is set)
       NText {
-        visible: root.maxWidgets >= 0
-        text: root.maxWidgets === 0 ? "(LOCKED)" : "(" + widgetModel.length + "/" + root.maxWidgets + ")"
+        visible: root.maxWidgets > 0
+        text: "(" + widgetModel.length + "/" + root.maxWidgets + ")"
         pointSize: Style.fontSizeS
         color: root.isAtMaxCapacity ? Color.mError : Color.mOnSurfaceVariant
         Layout.alignment: Qt.AlignVCenter
@@ -173,35 +152,18 @@ NBox {
 
     // Drag and Drop Widget Area
     Item {
-      id: gridContainer
       Layout.fillWidth: true
-      Layout.preferredHeight: {
-        if (widgetModel.length === 0) {
-          return 65 * Style.uiScaleRatio;
-        }
-        // Use actual width, fallback to a reasonable default if not yet available
-        var containerWidth = width > 0 ? width : (parent ? parent.width : 400);
-        var rows = Math.ceil(widgetModel.length / root.gridColumns);
-        // Calculate height: (rows * item height) + (row spacing between items) + grid margins
-        // Add extra buffer to prevent overlap
-        var gridTopMargin = Style.marginXXS;
-        var gridBottomMargin = Style.marginXXS;
-        var calculatedHeight = gridTopMargin + (rows * root.widgetItemHeight) + ((rows - 1) * Style.marginS) + gridBottomMargin + Style.marginXS;
-        return Math.max(65 * Style.uiScaleRatio, calculatedHeight);
-      }
+      Layout.fillHeight: true
       Layout.minimumHeight: 65 * Style.uiScaleRatio
-      clip: true // Clip to prevent overflow
+      clip: false // Don't clip children so ghost can move freely
 
-      Grid {
-        id: widgetGrid
+      Flow {
+        id: widgetFlow
         anchors.fill: parent
-        anchors.margins: Style.marginXXS // Small margin to prevent edge overlap
-        columns: root.gridColumns
-        rowSpacing: Style.marginS
-        columnSpacing: Style.marginM
+        spacing: Style.marginS
+        flow: Flow.LeftToRight
 
         Repeater {
-          id: widgetRepeater
           model: widgetModel
 
           delegate: Rectangle {
@@ -209,8 +171,8 @@ NBox {
             required property int index
             required property var modelData
 
-            width: root.calculateWidgetWidth(parent.width)
-            height: root.widgetItemHeight
+            width: widgetContent.implicitWidth + Style.marginL
+            height: Style.baseWidgetSize * 1.15 * Style.uiScaleRatio
             radius: Style.radiusL
             color: root.getWidgetColor(modelData)[0]
             border.color: Color.mOutline
@@ -219,7 +181,7 @@ NBox {
             // Store the widget index for drag operations
             property int widgetIndex: index
             readonly property int buttonsWidth: Math.round(20)
-            readonly property int buttonsCount: root.widgetHasSettings(modelData.id) ? 1 : 0
+            readonly property int buttonsCount: 1 + (root.widgetRegistry ? root.widgetRegistry.widgetHasUserSettings(modelData.id) : 0)
 
             // Visual feedback during drag
             opacity: flowDragArea.draggedIndex === index ? 0.5 : 1.0
@@ -260,38 +222,26 @@ NBox {
                   "action": "right",
                   "icon": "arrow-bar-to-right",
                   "visible": root.availableSections.includes("right") && root.sectionId !== "right"
-                },
-                {
-                  "label": I18n.tr("tooltips.remove-widget"),
-                  "action": "remove",
-                  "icon": "trash",
-                  "visible": true
                 }
               ]
 
-              onTriggered: action => {
-                             if (action === "remove") {
-                               root.removeWidget(root.sectionId, index);
-                             } else {
-                               root.moveWidget(root.sectionId, index, action);
-                             }
-                           }
+              onTriggered: action => root.moveWidget(root.sectionId, index, action)
             }
 
             // MouseArea for the context menu
             MouseArea {
               id: contextMouseArea
+              enabled: root.availableSections.length > 1 // Enable if there are other sections to move to
               anchors.fill: parent
               acceptedButtons: Qt.RightButton
-              cursorShape: Qt.PointingHandCursor
               z: -1 // Below the buttons but above background
 
               onPressed: mouse => {
                            if (mouse.button === Qt.RightButton) {
-                             // Check if click is not on the settings button area (if visible)
+                             // Check if click is not on the buttons area
                              const localX = mouse.x;
                              const buttonsStartX = parent.width - (parent.buttonsCount * parent.buttonsWidth);
-                             if (localX < buttonsStartX || parent.buttonsCount === 0) {
+                             if (localX < buttonsStartX) {
                                contextMenu.openAtItem(widgetItem, mouse.x, mouse.y);
                              }
                            }
@@ -299,53 +249,24 @@ NBox {
             }
             RowLayout {
               id: widgetContent
-              anchors.fill: parent
-              anchors.margins: Style.marginXS
-              anchors.rightMargin: Style.marginS
+              anchors.centerIn: parent
               spacing: Style.marginXXS
 
               NText {
-                text: {
-                  // For plugin widgets, get the actual plugin name from manifest
-                  if (root.widgetRegistry && root.widgetRegistry.isPluginWidget(modelData.id)) {
-                    const pluginId = modelData.id.replace("plugin:", "");
-                    const manifest = PluginRegistry.getPluginManifest(pluginId);
-                    if (manifest && manifest.name) {
-                      return manifest.name;
-                    }
-                    // Fallback: just strip the prefix
-                    return pluginId;
-                  }
-                  return modelData.id;
-                }
+                text: modelData.id
                 pointSize: Style.fontSizeXS
                 color: root.getWidgetColor(modelData)[1]
-                horizontalAlignment: Text.AlignLeft
-                verticalAlignment: Text.AlignVCenter
+                horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
-                leftPadding: Style.marginS
-                rightPadding: Style.marginS
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-              }
-
-              // Plugin indicator icon
-              NIcon {
-                visible: root.widgetRegistry && root.widgetRegistry.isPluginWidget(modelData.id)
-                icon: "plugin"
-                pointSize: Style.fontSizeXXS
-                color: root.getWidgetColor(modelData)[1]
-                Layout.preferredWidth: visible ? Style.baseWidgetSize * 0.5 : 0
-                Layout.preferredHeight: Style.baseWidgetSize * 0.5
+                Layout.preferredWidth: 60 * Style.uiScaleRatio
               }
 
               RowLayout {
                 spacing: 0
                 Layout.preferredWidth: buttonsCount * buttonsWidth * Style.uiScaleRatio
-                Layout.preferredHeight: parent.height
 
                 Loader {
-                  active: root.widgetHasSettings(modelData.id)
+                  active: root.widgetRegistry && root.widgetRegistry.widgetHasUserSettings(modelData.id)
                   sourceComponent: NIconButton {
                     icon: "settings"
                     tooltipText: I18n.tr("tooltips.widget-settings")
@@ -356,53 +277,49 @@ NBox {
                     colorBgHover: Qt.alpha(Color.mOnPrimary, Style.opacityLight)
                     colorFgHover: Color.mOnPrimary
                     onClicked: {
-                      // Check if this is a plugin widget
-                      var isPlugin = root.widgetRegistry && root.widgetRegistry.isPluginWidget(modelData.id);
-
-                      if (isPlugin) {
-                        // Handle plugin settings - emit signal for parent to handle
-                        var pluginId = modelData.id.replace("plugin:", "");
-                        var manifest = PluginRegistry.getPluginManifest(pluginId);
-
-                        if (!manifest || !manifest.entryPoints?.settings) {
-                          Logger.e("NSectionEditor", "Plugin settings not found for:", pluginId);
-                          return;
-                        }
-
-                        // Emit signal to request opening plugin settings
-                        root.openPluginSettingsRequested(manifest);
-                      } else {
-                        // Handle core widget settings
-                        var component = Qt.createComponent(Qt.resolvedUrl(root.settingsDialogComponent));
-                        function instantiateAndOpen() {
-                          var dialog = component.createObject(Overlay.overlay, {
-                                                                "widgetIndex": index,
-                                                                "widgetData": modelData,
-                                                                "widgetId": modelData.id,
-                                                                "sectionId": root.sectionId
-                                                              });
-                          if (dialog) {
-                            dialog.updateWidgetSettings.connect(root.updateWidgetSettings);
-                            dialog.open();
-                          } else {
-                            Logger.e("NSectionEditor", "Failed to create settings dialog instance");
-                          }
-                        }
-                        if (component.status === Component.Ready) {
-                          instantiateAndOpen();
-                        } else if (component.status === Component.Error) {
-                          Logger.e("NSectionEditor", component.errorString());
+                      var component = Qt.createComponent(Qt.resolvedUrl(root.settingsDialogComponent));
+                      function instantiateAndOpen() {
+                        var dialog = component.createObject(Overlay.overlay, {
+                                                              "widgetIndex": index,
+                                                              "widgetData": modelData,
+                                                              "widgetId": modelData.id,
+                                                              "sectionId": root.sectionId
+                                                            });
+                        if (dialog) {
+                          dialog.updateWidgetSettings.connect(root.updateWidgetSettings);
+                          dialog.open();
                         } else {
-                          component.statusChanged.connect(function () {
-                            if (component.status === Component.Ready) {
-                              instantiateAndOpen();
-                            } else if (component.status === Component.Error) {
-                              Logger.e("NSectionEditor", component.errorString());
-                            }
-                          });
+                          Logger.e("NSectionEditor", "Failed to create settings dialog instance");
                         }
                       }
+                      if (component.status === Component.Ready) {
+                        instantiateAndOpen();
+                      } else if (component.status === Component.Error) {
+                        Logger.e("NSectionEditor", component.errorString());
+                      } else {
+                        component.statusChanged.connect(function () {
+                          if (component.status === Component.Ready) {
+                            instantiateAndOpen();
+                          } else if (component.status === Component.Error) {
+                            Logger.e("NSectionEditor", component.errorString());
+                          }
+                        });
+                      }
                     }
+                  }
+                }
+
+                NIconButton {
+                  icon: "close"
+                  tooltipText: I18n.tr("tooltips.remove-widget")
+                  baseSize: miniButtonSize
+                  colorBorder: Qt.alpha(Color.mOutline, Style.opacityLight)
+                  colorBg: Color.mOnSurface
+                  colorFg: Color.mOnPrimary
+                  colorBgHover: Qt.alpha(Color.mOnPrimary, Style.opacityLight)
+                  colorFgHover: Color.mOnPrimary
+                  onClicked: {
+                    removeWidget(sectionId, index);
                   }
                 }
               }
@@ -438,8 +355,8 @@ NBox {
         id: dropIndicator
         width: 3
         height: Style.baseWidgetSize * 1.15
-        radius: Style.iRadiusXXS
-        color: Color.mSecondary
+        radius: width / 2
+        color: Color.mPrimary
         opacity: 0
         visible: opacity > 0
         z: 1999
@@ -510,7 +427,7 @@ NBox {
           for (var i = 0; i < widgetModel.length; i++) {
             if (i === draggedIndex)
               continue;
-            const widget = widgetRepeater.itemAt(i);
+            const widget = widgetFlow.children[i];
             if (!widget || widget.widgetIndex === undefined)
               continue;
 
@@ -535,9 +452,9 @@ NBox {
 
           // Check if we should insert at position 0 (very beginning)
           if (widgetModel.length > 0 && draggedIndex !== 0) {
-            const firstWidget = widgetRepeater.itemAt(0);
+            const firstWidget = widgetFlow.children[0];
             if (firstWidget) {
-              const dist = Math.sqrt(Math.pow(mouseX - firstWidget.x, 2) + Math.pow(mouseY - firstWidget.y, 2));
+              const dist = Math.sqrt(Math.pow(mouseX, 2) + Math.pow(mouseY - firstWidget.y, 2));
               if (dist < minDistance && mouseX < firstWidget.x + firstWidget.width / 2) {
                 minDistance = dist;
                 bestIndex = 0;
@@ -589,7 +506,7 @@ NBox {
 
                      // Find which widget was clicked
                      for (var i = 0; i < widgetModel.length; i++) {
-                       const widget = widgetRepeater.itemAt(i);
+                       const widget = widgetFlow.children[i];
                        if (widget && widget.widgetIndex !== undefined) {
                          if (mouse.x >= widget.x && mouse.x <= widget.x + widget.width && mouse.y >= widget.y && mouse.y <= widget.y + widget.height) {
                            const localX = mouse.x - widget.x;

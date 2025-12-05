@@ -12,16 +12,16 @@ ColumnLayout {
   property list<var> cardsModel: []
   property list<var> cardsDefault: [
     {
-      "id": "calendar-header-card",
-      "text": I18n.tr("settings.location.calendar.header.label"),
-      "enabled": true,
-      "required": true
-    },
-    {
-      "id": "calendar-month-card",
-      "text": I18n.tr("settings.location.calendar.month.label"),
+      "id": "banner-card",
+      "text": I18n.tr("settings.location.calendar.banner.label"),
       "enabled": true,
       "required": false
+    },
+    {
+      "id": "calendar-card",
+      "text": I18n.tr("settings.location.calendar.calendar.label"),
+      "enabled": true,
+      "required": true
     },
     {
       "id": "timer-card",

@@ -4,7 +4,6 @@ import QtQuick.Layouts
 import Quickshell
 import qs.Commons
 import qs.Services.Compositor
-import qs.Services.Noctalia
 import qs.Services.UI
 import qs.Widgets
 
@@ -118,6 +117,13 @@ ColumnLayout {
     checked: Settings.data.bar.floating
     onToggled: checked => {
                  Settings.data.bar.floating = checked;
+                 if (checked) {
+                   // Disable outer corners when floating is enabled
+                   Settings.data.bar.outerCorners = false;
+                 } else {
+                   // Enable outer corners when floating is disabled
+                   Settings.data.bar.outerCorners = true;
+                 }
                }
   }
 
@@ -220,9 +226,6 @@ ColumnLayout {
 
     NHeader {
       label: I18n.tr("settings.bar.widgets.section.label")
-    }
-
-    NLabel {
       description: I18n.tr("settings.bar.widgets.section.description")
     }
 
@@ -246,7 +249,6 @@ ColumnLayout {
         onReorderWidget: (section, fromIndex, toIndex) => _reorderWidgetInSection(section, fromIndex, toIndex)
         onUpdateWidgetSettings: (section, index, settings) => _updateWidgetSettingsInSection(section, index, settings)
         onMoveWidget: (fromSection, index, toSection) => _moveWidgetBetweenSections(fromSection, index, toSection)
-        onOpenPluginSettingsRequested: manifest => pluginSettingsDialog.openPluginSettings(manifest)
       }
 
       // Center Section
@@ -262,7 +264,6 @@ ColumnLayout {
         onReorderWidget: (section, fromIndex, toIndex) => _reorderWidgetInSection(section, fromIndex, toIndex)
         onUpdateWidgetSettings: (section, index, settings) => _updateWidgetSettingsInSection(section, index, settings)
         onMoveWidget: (fromSection, index, toSection) => _moveWidgetBetweenSections(fromSection, index, toSection)
-        onOpenPluginSettingsRequested: manifest => pluginSettingsDialog.openPluginSettings(manifest)
       }
 
       // Right Section
@@ -278,7 +279,6 @@ ColumnLayout {
         onReorderWidget: (section, fromIndex, toIndex) => _reorderWidgetInSection(section, fromIndex, toIndex)
         onUpdateWidgetSettings: (section, index, settings) => _updateWidgetSettingsInSection(section, index, settings)
         onMoveWidget: (fromSection, index, toSection) => _moveWidgetBetweenSections(fromSection, index, toSection)
-        onOpenPluginSettingsRequested: manifest => pluginSettingsDialog.openPluginSettings(manifest)
       }
     }
   }
@@ -411,61 +411,24 @@ ColumnLayout {
       if (instances[i].widgetId === widgetId) {
         const section = instances[i].section;
         if (section === "left")
-          locations["arrow-bar-to-left"] = true;
+          locations["L"] = true;
         else if (section === "center")
-          locations["layout-columns"] = true;
+          locations["C"] = true;
         else if (section === "right")
-          locations["arrow-bar-to-right"] = true;
+          locations["R"] = true;
       }
     }
-    return Object.keys(locations);
-  }
-
-  function createBadges(isPlugin, locations) {
-    const badges = [];
-
-    // Add plugin badge first (with custom color)
-    if (isPlugin) {
-      badges.push({
-                    "icon": "plugin",
-                    "color": Color.mSecondary
-                  });
-    }
-
-    // Add location badges (with default styling)
-    locations.forEach(function (location) {
-      badges.push({
-                    "icon": location,
-                    "color": Color.mOnSurfaceVariant
-                  });
-    });
-
-    return badges;
+    return Object.keys(locations).join('');
   }
 
   function updateAvailableWidgetsModel() {
     availableWidgets.clear();
     const widgets = BarWidgetRegistry.getAvailableWidgets();
     widgets.forEach(entry => {
-                      const isPlugin = BarWidgetRegistry.isPluginWidget(entry);
-                      let displayName = entry;
-
-                      // For plugin widgets, strip the "plugin:" prefix and try to get the actual plugin name
-                      if (isPlugin) {
-                        const pluginId = entry.replace("plugin:", "");
-                        const manifest = PluginRegistry.getPluginManifest(pluginId);
-                        if (manifest && manifest.name) {
-                          displayName = manifest.name;
-                        } else {
-                          // Fallback: just strip the prefix
-                          displayName = pluginId;
-                        }
-                      }
-
                       availableWidgets.append({
                                                 "key": entry,
-                                                "name": displayName,
-                                                "badges": createBadges(isPlugin, getWidgetLocations(entry))
+                                                "name": entry,
+                                                "badgeLocations": getWidgetLocations(entry)
                                               });
                     });
   }
@@ -484,12 +447,5 @@ ColumnLayout {
     function onActiveWidgetsChanged() {
       updateAvailableWidgetsModel();
     }
-  }
-
-  // Shared Plugin Settings Popup
-  NPluginSettingsPopup {
-    id: pluginSettingsDialog
-    parent: Overlay.overlay
-    showToastOnSave: false
   }
 }

@@ -2,23 +2,18 @@ pragma Singleton
 import Qt.labs.folderlistmodel
 
 import QtQuick
+import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import qs.Commons
-import "../../Helpers/sha256.js" as Sha256
+import "../../Helpers/sha256.js" as Checksum
 
 Singleton {
   id: root
 
   readonly property ListModel fillModeModel: ListModel {}
   readonly property string defaultDirectory: Settings.preprocessPath(Settings.data.wallpaper.directory)
-  readonly property var imageExtensions: ["jpg", "jpeg", "png", "pnm", "bmp", "webp"]
-  readonly property var videoExtensions: ["mp4", "webm", "mov", "mkv", "gif"]
-  readonly property string steamWorkshopDirectory: Settings.preprocessPath("~/.local/share/Steam/steamapps/workshop/content/431960/")
-  property var previewCache: ({})
-  property var previewProcesses: ({})
-  property var previewQueue: []
-  property var previewScanProcesses: ({})
+  readonly property string steamWorkshopDirectory: Settings.preprocessPath(Quickshell.env("HOME") + "/.local/share/Steam/steamapps/workshop/content/431960/")
 
   // All available wallpaper transitions
   readonly property ListModel transitionsModel: ListModel {}
@@ -30,16 +25,34 @@ Singleton {
 
   property var wallpaperLists: ({})
   property int scanningCount: 0
+  readonly property bool scanning: (scanningCount > 0)
 
   // Cache for current wallpapers - can be updated directly since we use signals for notifications
   property var currentWallpapers: ({})
 
-  property bool isInitialized: false
-  property string wallpaperCacheFile: ""
+  // Treat GIFs as video so we always grab a first-frame preview and avoid heavy animation in selectors
+  readonly property var imageExtensions: ["jpg", "jpeg", "png", "pnm", "bmp", "webp"]
+  readonly property var videoExtensions: ["mp4", "webm", "mov", "mkv", "gif"]
+  readonly property int videoPreviewSize: 384
 
-  readonly property bool scanning: (scanningCount > 0)
-  readonly property string noctaliaDefaultWallpaper: Quickshell.shellDir + "/Assets/Wallpaper/noctalia.png"
-  property string defaultWallpaper: noctaliaDefaultWallpaper
+  // Cache for previews (video -> generated thumbnail path)
+  property var previewCache: ({})
+  property var previewProcesses: ({})
+  property var bulkPreviewProcess: null
+  property bool bulkPreviewRunning: false
+  property var bulkScanProcess: null
+  property var steamScanProcess: null
+
+  property bool isInitialized: false
+  property string activeAudioPath: ""
+
+  // Shared audio output for wallpaper videos
+  property AudioOutput wallpaperAudioOutput: AudioOutput {
+    id: wallpaperAudioOutputImpl
+    muted: root.computeAudioMuted()
+    volume: Settings.data.wallpaper.videoAudioVolume
+    objectName: "Noctalia Wallpaper"
+  }
 
   // Signals for reactive UI updates
   signal wallpaperChanged(string screenName, string path)
@@ -47,11 +60,10 @@ Singleton {
   signal wallpaperDirectoryChanged(string screenName, string directory)
   // Emitted when a monitor's directory changes
   signal wallpaperListChanged(string screenName, int count)
-  // Emitted when a wallpaper preview becomes available
+  // Emitted when a wallpaper preview becomes available (primarily for video thumbnails)
   signal wallpaperPreviewReady(string originalPath, string previewPath)
-  signal audioFocusChanged(string path)
-
-  property string activeAudioPath: ""
+  // Emitted when the wallpaper audio focus changes (path of active video or "")
+  signal audioFocusChanged(string activePath)
 
   // Emitted when available wallpapers list changes
   Connections {
@@ -83,6 +95,21 @@ Singleton {
         root.wallpaperDirectoryChanged(screenName, root.getMonitorDirectory(screenName));
       }
     }
+    function onUseWallhavenChanged() {
+      if (Settings.data.wallpaper.useWallhaven && Settings.data.wallpaper.useSteamWallpapers) {
+        Settings.data.wallpaper.useSteamWallpapers = false;
+      }
+    }
+    function onUseSteamWallpapersChanged() {
+      root.refreshWallpapersList();
+    }
+    function onSteamWallpaperIntegrationChanged() {
+      if (!Settings.data.wallpaper.steamWallpaperIntegration && Settings.data.wallpaper.useSteamWallpapers) {
+        Settings.data.wallpaper.useSteamWallpapers = false;
+        return;
+      }
+      root.refreshWallpapersList();
+    }
     function onRandomEnabledChanged() {
       root.toggleRandomWallpaper();
     }
@@ -92,28 +119,14 @@ Singleton {
     function onRecursiveSearchChanged() {
       root.refreshWallpapersList();
     }
-    function onUseSteamWallpapersChanged() {
-      root.refreshWallpapersList();
-    }
-    function onSteamWallpaperIntegrationChanged() {
-      if (!Settings.data.wallpaper.steamWallpaperIntegration) {
-        Settings.data.wallpaper.useSteamWallpapers = false;
-      }
-      root.refreshWallpapersList();
-    }
-    function onUseWallhavenChanged() {
-      if (Settings.data.wallpaper.useWallhaven) {
-        Settings.data.wallpaper.useSteamWallpapers = false;
-      }
-    }
     function onVideoPlaybackEnabledChanged() {
-      root.refreshWallpapersList();
+      root.syncAudioOutput();
     }
     function onVideoAudioMutedChanged() {
-      root.audioFocusChanged(root.activeAudioPath);
+      root.syncAudioOutput();
     }
     function onVideoAudioVolumeChanged() {
-      root.audioFocusChanged(root.activeAudioPath);
+      root.syncAudioOutput();
     }
   }
 
@@ -123,17 +136,40 @@ Singleton {
 
     translateModels();
 
-    // Initialize cache file path
-    Qt.callLater(() => {
-                   if (typeof Settings !== 'undefined' && Settings.cacheDir) {
-                     wallpaperCacheFile = Settings.cacheDir + "wallpapers.json";
-                     wallpaperCacheView.path = wallpaperCacheFile;
-                   }
-                 });
+    // Load wallpapers from ShellState first (faster), then fall back to Settings
+    currentWallpapers = ({});
 
-    // Note: isInitialized will be set to true in wallpaperCacheView.onLoaded
+    if (typeof ShellState !== 'undefined' && ShellState.isLoaded) {
+      var cachedWallpapers = ShellState.getWallpapers();
+      if (cachedWallpapers && Object.keys(cachedWallpapers).length > 0) {
+        currentWallpapers = cachedWallpapers;
+        Logger.d("Wallpaper", "Loaded wallpapers from ShellState");
+      } else {
+        // Fall back to Settings if ShellState is empty
+        loadFromSettings();
+      }
+    } else {
+      // ShellState not ready yet, load from Settings
+      loadFromSettings();
+    }
+
+    syncAudioOutput();
+
+    isInitialized = true;
     Logger.d("Wallpaper", "Triggering initial wallpaper scan");
     Qt.callLater(refreshWallpapersList);
+  }
+
+  function loadFromSettings() {
+    var monitors = Settings.data.wallpaper.monitors || [];
+    for (var i = 0; i < monitors.length; i++) {
+      if (monitors[i].name && monitors[i].wallpaper) {
+        currentWallpapers[monitors[i].name] = monitors[i].wallpaper;
+      }
+    }
+    Logger.d("Wallpaper", "Loaded wallpapers from Settings");
+
+    // Migration is now handled in Settings.qml
   }
 
   // -------------------------------------------------
@@ -193,6 +229,20 @@ Singleton {
                             });
   }
 
+  function isSteamSourceActive() {
+    return Settings.data.wallpaper.useSteamWallpapers
+           && !Settings.data.wallpaper.useWallhaven
+           && Settings.data.wallpaper.steamWallpaperIntegration;
+  }
+
+  function shouldSkipSteamFile(path) {
+    if (!path) {
+      return true;
+    }
+    var name = path.split("/").pop().toLowerCase();
+    return name.startsWith("preview.");
+  }
+
   // -------------------------------------------------------------------
   function getFillModeUniform() {
     for (var i = 0; i < fillModeModel.count; i++) {
@@ -205,178 +255,10 @@ Singleton {
     return 1.0;
   }
 
-  function isVideoFile(path) {
-    if (!path || typeof path !== "string") {
-      return false;
-    }
-    var ext = path.split('.').pop().toLowerCase();
-    return videoExtensions.indexOf(ext) !== -1;
-  }
-
-  function isImageFile(path) {
-    if (!path || typeof path !== "string") {
-      return false;
-    }
-    var ext = path.split('.').pop().toLowerCase();
-    return imageExtensions.indexOf(ext) !== -1;
-  }
-
-  function getWallpaperType(path) {
-    if (isVideoFile(path) && Settings.data.wallpaper.videoPlaybackEnabled) {
-      return "video";
-    }
-    return "image";
-  }
-
-  function getPreviewPath(path) {
-    if (!path || path === "") {
-      return "";
-    }
-    var hash = Sha256.sha256(path);
-    return Settings.cacheDirImagesWallpapers + hash + "@384x384.png";
-  }
-
-  function fileExists(path) {
-    if (!path) {
-      return false;
-    }
-    try {
-      var xhr = new XMLHttpRequest();
-      xhr.open("HEAD", "file://" + path, false);
-      xhr.send();
-      return xhr.status === 200 || xhr.status === 0;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function generateWallpaperPreview(path) {
-    if (!path || !isVideoFile(path)) {
-      return;
-    }
-    var previewPath = getPreviewPath(path);
-
-    if (previewCache[path] === undefined) {
-      if (fileExists(previewPath)) {
-        previewCache[path] = previewPath;
-        wallpaperPreviewReady(path, previewPath);
-        return;
-      }
-    }
-
-    if (previewCache[path] && previewCache[path] !== true) {
-      wallpaperPreviewReady(path, previewCache[path]);
-      return;
-    }
-
-    // Skip if already generating or generated
-    if (previewProcesses[path]) {
-      return;
-    }
-
-    previewCache[path] = previewCache[path] || true;
-
-    // Throttle concurrent generations to keep UI responsive (single ffmpeg at a time)
-    if (Object.keys(previewProcesses).length >= 1) {
-      if (previewQueue.indexOf(path) === -1) {
-        previewQueue.push(path);
-      }
-      return;
-    }
-
-    var processString = `
-    import QtQuick
-    import Quickshell.Io
-    Process {
-      id: previewProcess
-      command: ["ffmpeg", "-y", "-i", "${path.replace(/"/g, '\\"')}", "-vf", "thumbnail,scale='min(384,iw)':-2", "-frames:v", "1", "-update", "1", "${previewPath.replace(/"/g, '\\"')}"]
-      stdout: StdioCollector {}
-      stderr: StdioCollector {}
-    }`;
-
-    var processObject = Qt.createQmlObject(processString, root, "WallpaperPreview_" + Sha256.sha256(path).substr(0, 8));
-    previewProcesses[path] = processObject;
-
-    var handler = function (exitCode) {
-      if (exitCode === 0) {
-        previewCache[path] = previewPath;
-        wallpaperPreviewReady(path, previewPath);
-      } else {
-        Logger.w("Wallpaper", "Preview generation failed for", path, "exit:", exitCode, "stderr:", processObject.stderr.text);
-        previewCache[path] = false;
-      }
-      delete previewProcesses[path];
-      processObject.destroy();
-      if (previewQueue.length > 0) {
-        var nextPath = previewQueue.shift();
-        Qt.callLater(() => generateWallpaperPreview(nextPath));
-      }
-    };
-
-    processObject.exited.connect(handler);
-    processObject.running = true;
-  }
-
-  function getPreviewForDisplay(path) {
-    if (!path || path === "") {
-      return "";
-    }
-    if (!isVideoFile(path)) {
-      return path;
-    }
-    var previewPath = getPreviewPath(path);
-    if (!previewCache[path]) {
-      generateWallpaperPreview(path);
-      return path;
-    }
-    if (previewCache[path] === true) {
-      return path;
-    }
-    return previewCache[path] || previewPath;
-  }
-
-  function getWallpaperEntry(path) {
-    return {
-      "path": path,
-      "type": getWallpaperType(path),
-      "previewPath": getPreviewForDisplay(path)
-    };
-  }
-
-  function setActiveAudioPath(path) {
-    activeAudioPath = path || "";
-    audioFocusChanged(activeAudioPath);
-  }
-
-  function clearActiveAudioPath(path) {
-    if (!path || path === activeAudioPath) {
-      activeAudioPath = "";
-      audioFocusChanged(activeAudioPath);
-    }
-  }
-
-  function computeAudioMuted(path) {
-    if (!Settings.data.wallpaper.videoPlaybackEnabled || Settings.data.wallpaper.videoAudioMuted) {
-      return true;
-    }
-    if (Settings.data.wallpaper.videoAudioMode === "primary" && path && activeAudioPath && activeAudioPath !== path) {
-      return true;
-    }
-    return false;
-  }
-
-  function syncAudioOutput(audioOutput, path) {
-    if (!audioOutput) {
-      return;
-    }
-    audioOutput.volume = Settings.data.wallpaper.videoAudioVolume;
-    audioOutput.muted = computeAudioMuted(path);
-  }
-
   // -------------------------------------------------------------------
   // Get specific monitor wallpaper data
   function getMonitorConfig(screenName) {
-    var monitors = Settings.data.wallpaper.monitorDirectories;
+    var monitors = Settings.data.wallpaper.monitors;
     if (monitors !== undefined) {
       for (var i = 0; i < monitors.length; i++) {
         if (monitors[i].name !== undefined && monitors[i].name === screenName) {
@@ -405,7 +287,7 @@ Singleton {
   // -------------------------------------------------------------------
   // Set specific monitor directory
   function setMonitorDirectory(screenName, directory) {
-    var monitors = Settings.data.wallpaper.monitorDirectories || [];
+    var monitors = Settings.data.wallpaper.monitors || [];
     var found = false;
 
     // Create a new array with updated values
@@ -430,14 +312,315 @@ Singleton {
     }
 
     // Update Settings with new array to ensure proper persistence
-    Settings.data.wallpaper.monitorDirectories = newMonitors.slice();
+    Settings.data.wallpaper.monitors = newMonitors.slice();
     root.wallpaperDirectoryChanged(screenName, Settings.preprocessPath(directory));
+  }
+
+  // -------------------------------------------------------------------
+  function isVideo(path) {
+    if (!path || typeof path !== "string")
+      return false;
+    var lower = path.toLowerCase();
+    for (var i = 0; i < videoExtensions.length; i++) {
+      if (lower.endsWith("." + videoExtensions[i])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function getWallpaperType(path) {
+    // When video playback is disabled, treat all wallpapers as images to avoid spawning video players.
+    if (Settings.data?.wallpaper && Settings.data.wallpaper.videoPlaybackEnabled === false) {
+      return "image";
+    }
+    return isVideo(path) ? "video" : "image";
+  }
+
+  function buildPreviewPath(path) {
+    if (!path) {
+      return "";
+    }
+    var hash = Checksum.sha256(path);
+    return `${Settings.cacheDirImagesWallpapers}${hash}@${videoPreviewSize}x${videoPreviewSize}.png`;
+  }
+
+  // Return the preview path if available. For videos, starts generation on demand.
+  function getPreviewPath(path, generateIfMissing) {
+    if (!path) {
+      return "";
+    }
+    if (!isVideo(path)) {
+      return path;
+    }
+
+    var previewPath = buildPreviewPath(path);
+    if (previewCache[path]) {
+      return previewCache[path];
+    }
+
+    if (generateIfMissing === undefined || generateIfMissing) {
+      ensureVideoPreview(path, previewPath);
+    }
+
+    // Preview not ready yet
+    return "";
+  }
+
+  // Convenience for UI: return preview if ready, otherwise a safe placeholder (no video paths).
+  function getPreviewForDisplay(path) {
+    if (!path) {
+      return "";
+    }
+    if (!isVideo(path)) {
+      return path;
+    }
+    return getPreviewPath(path, true);
+  }
+
+  // Unified wallpaper data used by views and mutagen
+  function getWallpaperEntry(path) {
+    return {
+      "path": path,
+      "type": getWallpaperType(path),
+      "previewPath": getPreviewForDisplay(path)
+    };
+  }
+
+  function computeAudioMuted() {
+    return !Settings.data.wallpaper.videoPlaybackEnabled
+           || Settings.data.wallpaper.videoAudioMuted;
+  }
+
+  function getPrimaryAudioMonitor() {
+    if (Quickshell.screens && Quickshell.screens.length > 0) {
+      return Quickshell.screens[0].name || "";
+    }
+    return "";
+  }
+
+  function syncAudioOutput() {
+    wallpaperAudioOutput.volume = Settings.data.wallpaper.videoAudioVolume;
+    wallpaperAudioOutput.muted = computeAudioMuted();
+  }
+
+  function setActiveAudioPath(path) {
+    if (activeAudioPath === path) {
+      return;
+    }
+    activeAudioPath = path || "";
+    audioFocusChanged(activeAudioPath);
+  }
+
+  function clearActiveAudioPath(path) {
+    if (!path || activeAudioPath !== path) {
+      return;
+    }
+    activeAudioPath = "";
+    audioFocusChanged(activeAudioPath);
+  }
+
+  function ensureVideoPreview(path, previewPath) {
+    if (!path) {
+      return;
+    }
+    if (previewProcesses[path]) {
+      return;
+    }
+
+    var previewTarget = previewPath || buildPreviewPath(path);
+    var pathEsc = path.replace(/'/g, "'\\''");
+    var previewEsc = previewTarget.replace(/'/g, "'\\''");
+    var cacheDirEsc = Settings.cacheDirImagesWallpapers.replace(/'/g, "'\\''");
+
+    // Single-process pipeline: check existing file, ensure ffmpeg is present, then grab first frame
+    var processString = `
+    import QtQuick
+    import Quickshell.Io
+    Process {
+      id: process
+      command: ["bash", "-lc", "mkdir -p '${cacheDirEsc}' && { test -s '${previewEsc}' && exit 0; } && command -v ffmpeg >/dev/null 2>&1 && ffmpeg -y -v error -i '${pathEsc}' -frames:v 1 -vf \\"thumbnail,scale=min(${videoPreviewSize}\\\\,iw):-2\\" '${previewEsc}'"]
+      stdout: StdioCollector {}
+      stderr: StdioCollector {}
+    }
+    `;
+
+    var processObject = Qt.createQmlObject(processString, root, "PreviewGenerator_" + Checksum.sha256(path).substr(0, 8));
+    previewProcesses[path] = processObject;
+
+    var handler = function (exitCode) {
+      delete previewProcesses[path];
+      processObject.destroy();
+
+      if (exitCode === 0) {
+        previewCache[path] = previewTarget;
+        wallpaperPreviewReady(path, previewTarget);
+      } else {
+        Logger.w("Wallpaper", "Failed to generate preview for", path, "exit:", exitCode);
+      }
+    };
+
+    processObject.exited.connect(handler);
+    processObject.running = true;
+  }
+
+  // Generate previews for all known video wallpapers across screens (best-effort)
+  function generateAllVideoPreviews() {
+    if (bulkPreviewRunning) {
+      Logger.i("Wallpaper", "Bulk video preview generation already running");
+      return;
+    }
+
+    var screens = Quickshell.screens || [];
+    var videoPaths = [];
+    var previewPaths = [];
+
+    for (var i = 0; i < screens.length; i++) {
+      var list = getWallpapersList(screens[i].name) || [];
+      for (var j = 0; j < list.length; j++) {
+        var path = list[j];
+        if (isVideo(path)) {
+          videoPaths.push(path);
+          previewPaths.push(buildPreviewPath(path));
+        }
+      }
+    }
+
+    if (videoPaths.length === 0) {
+      Logger.i("Wallpaper", "No video wallpapers found for bulk preview generation");
+      return;
+    }
+
+    var cacheDirEsc = Settings.cacheDirImagesWallpapers.replace(/'/g, "'\\''");
+    var scriptLines = ["mkdir -p '" + cacheDirEsc + "'"];
+
+    for (var k = 0; k < videoPaths.length; k++) {
+      var pEsc = videoPaths[k].replace(/'/g, "'\\''");
+      var prevEsc = previewPaths[k].replace(/'/g, "'\\''");
+      scriptLines.push(`{ test -s '${prevEsc}' || ffmpeg -y -v error -i '${pEsc}' -frames:v 1 -vf "thumbnail,scale=min(${videoPreviewSize}\\,iw):-2" '${prevEsc}'; } || true`);
+    }
+
+    var processString = `
+    import QtQuick
+    import Quickshell.Io
+    Process {
+      id: process
+      command: ["bash", "-lc", "${scriptLines.join(" && ")}"]
+      stdout: StdioCollector {}
+      stderr: StdioCollector {}
+    }
+    `;
+
+    if (bulkPreviewProcess) {
+      try {
+        bulkPreviewProcess.running = false;
+        bulkPreviewProcess.destroy();
+      } catch (e) {
+      }
+      bulkPreviewProcess = null;
+    }
+
+    bulkPreviewProcess = Qt.createQmlObject(processString, root, "BulkPreviewProcess");
+    bulkPreviewRunning = true;
+
+    var handler = function (exitCode) {
+      bulkPreviewRunning = false;
+      bulkPreviewProcess = null;
+
+      // Populate cache and notify listeners so selectors refresh
+      for (var t = 0; t < videoPaths.length; t++) {
+        previewCache[videoPaths[t]] = previewPaths[t];
+        wallpaperPreviewReady(videoPaths[t], previewPaths[t]);
+      }
+
+      Logger.i("Wallpaper", "Bulk video preview generation finished with code", exitCode, "for", videoPaths.length, "videos");
+      try {
+        this.destroy();
+      } catch (e) {
+      }
+    };
+
+    bulkPreviewProcess.exited.connect(handler);
+    bulkPreviewProcess.running = true;
+  }
+
+  // Recursively scan configured directories for videos and trigger preview generation
+  function generateAllVideoPreviewsRecursive() {
+    if (bulkScanProcess) {
+      Logger.i("Wallpaper", "Bulk video preview scan already running");
+      return;
+    }
+
+    var dirs = [];
+    if (isSteamSourceActive()) {
+      if (steamWorkshopDirectory && dirs.indexOf(steamWorkshopDirectory) === -1) {
+        dirs.push(steamWorkshopDirectory);
+      }
+    } else if (Settings.data.wallpaper.enableMultiMonitorDirectories) {
+      for (var i = 0; i < Quickshell.screens.length; i++) {
+        var d = getMonitorDirectory(Quickshell.screens[i].name);
+        if (d && dirs.indexOf(d) === -1) {
+          dirs.push(d);
+        }
+      }
+    } else {
+      if (defaultDirectory && dirs.indexOf(defaultDirectory) === -1) {
+        dirs.push(defaultDirectory);
+      }
+    }
+
+    if (dirs.length === 0) {
+      Logger.i("Wallpaper", "No directories configured for preview scan");
+      return;
+    }
+
+    var patterns = isSteamSourceActive()
+                   ? ["*.mp4", "*.webm", "*.mov", "*.mkv"]
+                   : ["*.mp4", "*.webm", "*.mov", "*.mkv", "*.gif"];
+    var findParts = [];
+    dirs.forEach(function (dir) {
+      var esc = dir.replace(/'/g, "'\\''");
+      findParts.push("find -L '" + esc + "' -type f \\( " + patterns.map(function (p) {
+        return "-iname '" + p + "'";
+      }).join(" -o ") + " \\)");
+    });
+    var command = findParts.join(" ; ");
+
+    var processString = `
+    import QtQuick
+    import Quickshell.Io
+    Process {
+      id: process
+      stdout: StdioCollector {}
+      stderr: StdioCollector {}
+    }
+    `;
+
+    bulkScanProcess = Qt.createQmlObject(processString, root, "BulkVideoScan");
+    bulkScanProcess.command = ["bash", "-lc", command];
+
+    var handleExit = function () {
+      var output = bulkScanProcess.stdout.text || "";
+      bulkScanProcess.destroy();
+      bulkScanProcess = null;
+
+      var lines = output.split("\\n");
+      lines.forEach(function (line) {
+        var p = line.trim();
+        if (p !== "" && isVideo(p)) {
+          ensureVideoPreview(p, buildPreviewPath(p));
+        }
+      });
+    };
+
+    bulkScanProcess.exited.connect(handleExit);
+    bulkScanProcess.running = true;
   }
 
   // -------------------------------------------------------------------
   // Get specific monitor wallpaper - now from cache
   function getWallpaper(screenName) {
-    return currentWallpapers[screenName] || root.defaultWallpaper;
+    return currentWallpapers[screenName] || Settings.defaultWallpaper;
   }
 
   // -------------------------------------------------------------------
@@ -477,12 +660,15 @@ Singleton {
     // Update cache directly
     currentWallpapers[screenName] = path;
 
-    if (isVideoFile(path)) {
-      generateWallpaperPreview(path);
+    // Kick off preview generation for videos
+    if (isVideo(path)) {
+      ensureVideoPreview(path, buildPreviewPath(path));
     }
 
-    // Save to cache file with debounce
-    saveTimer.restart();
+    // Save to ShellState (wallpaper paths now only stored here, not in Settings)
+    if (typeof ShellState !== 'undefined' && ShellState.isLoaded) {
+      ShellState.setWallpapers(currentWallpapers);
+    }
 
     // Emit signal for this specific wallpaper change
     root.wallpaperChanged(screenName, path);
@@ -547,10 +733,20 @@ Singleton {
 
   // -------------------------------------------------------------------
   function refreshWallpapersList() {
-    Logger.d("Wallpaper", "refreshWallpapersList", "recursive:", Settings.data.wallpaper.recursiveSearch);
+    Logger.d("Wallpaper", "refreshWallpapersList", "recursive:", Settings.data.wallpaper.recursiveSearch, "steam:", isSteamSourceActive());
     scanningCount = 0;
 
     if (isSteamSourceActive()) {
+      for (var key in recursiveProcesses) {
+        if (recursiveProcesses.hasOwnProperty(key)) {
+          try {
+            recursiveProcesses[key].running = false;
+            recursiveProcesses[key].destroy();
+          } catch (e) {
+          }
+          delete recursiveProcesses[key];
+        }
+      }
       scanSteamWorkshop();
       return;
     }
@@ -586,16 +782,81 @@ Singleton {
   // Process instances for recursive scanning (one per screen)
   property var recursiveProcesses: ({})
 
-  function isSteamSourceActive() {
-    return Settings.data.wallpaper.steamWallpaperIntegration && Settings.data.wallpaper.useSteamWallpapers && !Settings.data.wallpaper.useWallhaven;
-  }
+  function scanSteamWorkshop() {
+    var directory = steamWorkshopDirectory;
+    var screens = Quickshell.screens || [];
 
-  function shouldSkipSteamFile(path) {
-    if (!path) {
-      return false;
+    if (!directory || directory === "") {
+      Logger.w("Wallpaper", "Empty Steam workshop directory");
+      for (var i = 0; i < screens.length; i++) {
+        var screenName = screens[i].name;
+        wallpaperLists[screenName] = [];
+        wallpaperListChanged(screenName, 0);
+      }
+      return;
     }
-    var base = path.split('/').pop().toLowerCase();
-    return base.startsWith("preview.");
+
+    if (steamScanProcess) {
+      try {
+        steamScanProcess.running = false;
+        steamScanProcess.destroy();
+      } catch (e) {
+      }
+      steamScanProcess = null;
+      scanningCount = Math.max(0, scanningCount - 1);
+    }
+
+    scanningCount++;
+    Logger.i("Wallpaper", "Starting Steam workshop scan in", directory);
+
+    var processString = `
+    import QtQuick
+    import Quickshell.Io
+    Process {
+    id: process
+    command: ["find", "-L", "` + directory + `", "-type", "f", "(", "-iname", "*.mp4", "-o", "-iname", "*.webm", "-o", "-iname", "*.mov", "-o", "-iname", "*.mkv", ")"]
+    stdout: StdioCollector {}
+    stderr: StdioCollector {}
+    }
+    `;
+
+    var processObject = Qt.createQmlObject(processString, root, "SteamWorkshopScan");
+    steamScanProcess = processObject;
+
+    var handler = function (exitCode) {
+      scanningCount--;
+      var files = [];
+
+      if (exitCode === 0) {
+        var lines = processObject.stdout.text.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].trim();
+          if (line !== '' && isVideo(line) && !shouldSkipSteamFile(line)) {
+            files.push(line);
+          }
+        }
+        files.sort();
+        Logger.i("Wallpaper", "Steam workshop scan completed, found", files.length, "videos");
+      } else {
+        Logger.w("Wallpaper", "Steam workshop scan failed for", directory, "exit code:", exitCode);
+      }
+
+      for (var j = 0; j < screens.length; j++) {
+        var screenName = screens[j].name;
+        var listCopy = files.slice();
+        wallpaperLists[screenName] = listCopy;
+        wallpaperListChanged(screenName, listCopy.length);
+      }
+
+      steamScanProcess = null;
+      try {
+        processObject.destroy();
+      } catch (e) {
+      }
+    };
+
+    processObject.exited.connect(handler);
+    processObject.running = true;
   }
 
   // -------------------------------------------------------------------
@@ -613,7 +874,7 @@ Singleton {
       recursiveProcesses[screenName].running = false;
       recursiveProcesses[screenName].destroy();
       delete recursiveProcesses[screenName];
-      scanningCount = Math.max(0, scanningCount - 1);
+      scanningCount--;
     }
 
     scanningCount++;
@@ -669,162 +930,6 @@ Singleton {
     processObject.running = true;
   }
 
-  function scanSteamWorkshop() {
-    var directory = steamWorkshopDirectory;
-    if (!directory || directory === "") {
-      Logger.w("Wallpaper", "Steam workshop directory is empty");
-      for (var i = 0; i < Quickshell.screens.length; i++) {
-        var screenName = Quickshell.screens[i].name;
-        wallpaperLists[screenName] = [];
-        wallpaperListChanged(screenName, 0);
-      }
-      return;
-    }
-
-    scanningCount++;
-    Logger.i("Wallpaper", "Starting Steam workshop scan in", directory);
-
-    var processComponent = Qt.createComponent("", root);
-    var processString = `
-    import QtQuick
-    import Quickshell.Io
-    Process {
-      id: process
-      command: ["find", "-L", "${directory}", "-type", "f", "(", "-iname", "*.mp4", "-o", "-iname", "*.webm", "-o", "-iname", "*.mov", "-o", "-iname", "*.mkv", "-o", "-iname", "*.gif", ")"]
-      stdout: StdioCollector {}
-      stderr: StdioCollector {}
-    }
-    `;
-
-    var processObject = Qt.createQmlObject(processString, root, "SteamWorkshopScan");
-
-    var handler = function (exitCode) {
-      scanningCount--;
-      if (exitCode === 0) {
-        var lines = processObject.stdout.text.split('\n');
-        var files = [];
-        for (var i = 0; i < lines.length; i++) {
-          var line = lines[i].trim();
-          if (line !== '' && !shouldSkipSteamFile(line)) {
-            files.push(line);
-          }
-        }
-        files.sort();
-        for (var s = 0; s < Quickshell.screens.length; s++) {
-          var screenName = Quickshell.screens[s].name;
-          wallpaperLists[screenName] = files;
-          wallpaperListChanged(screenName, files.length);
-        }
-        Logger.i("Wallpaper", "Steam workshop scan completed, found", files.length, "files");
-      } else {
-        Logger.w("Wallpaper", "Steam workshop scan failed with exit code", exitCode);
-        for (var s = 0; s < Quickshell.screens.length; s++) {
-          var screenName = Quickshell.screens[s].name;
-          wallpaperLists[screenName] = [];
-          wallpaperListChanged(screenName, 0);
-        }
-      }
-      processObject.destroy();
-    };
-
-    processObject.exited.connect(handler);
-    processObject.running = true;
-  }
-
-  function generateAllVideoPreviews() {
-    var seen = {};
-    var screens = Object.keys(wallpaperLists);
-    for (var i = 0; i < screens.length; i++) {
-      var list = wallpaperLists[screens[i]] || [];
-      for (var j = 0; j < list.length; j++) {
-        var path = list[j];
-        if (isVideoFile(path) && !seen[path]) {
-          seen[path] = true;
-          generateWallpaperPreview(path);
-        }
-      }
-    }
-
-    if (isSteamSourceActive() && screens.length === 0) {
-      generateAllVideoPreviewsRecursive();
-    }
-  }
-
-  function generateAllVideoPreviewsRecursive() {
-    if (isSteamSourceActive()) {
-      generatePreviewsInDirectory(steamWorkshopDirectory);
-      return;
-    }
-
-    var directories = [];
-    if (Settings.data.wallpaper.enableMultiMonitorDirectories) {
-      for (var i = 0; i < Quickshell.screens.length; i++) {
-        var monitor = getMonitorConfig(Quickshell.screens[i].name);
-        if (monitor && monitor.directory) {
-          directories.push(Settings.preprocessPath(monitor.directory));
-        }
-      }
-    }
-    if (directories.length === 0 && defaultDirectory) {
-      directories.push(defaultDirectory);
-    }
-
-    var uniqueDirs = {};
-    for (var d = 0; d < directories.length; d++) {
-      var dir = directories[d];
-      if (dir && !uniqueDirs[dir]) {
-        uniqueDirs[dir] = true;
-        generatePreviewsInDirectory(dir);
-      }
-    }
-  }
-
-  function generatePreviewsInDirectory(directory) {
-    if (!directory || directory === "") {
-      return;
-    }
-
-    var key = "preview-" + directory;
-    if (previewScanProcesses[key]) {
-      return;
-    }
-
-    var processString = `
-    import QtQuick
-    import Quickshell.Io
-    Process {
-      id: process
-      command: ["find", "-L", "${directory}", "-type", "f", "(", "-iname", "*.mp4", "-o", "-iname", "*.webm", "-o", "-iname", "*.mov", "-o", "-iname", "*.mkv", "-o", "-iname", "*.gif", ")"]
-      stdout: StdioCollector {}
-      stderr: StdioCollector {}
-    }`;
-
-    var processObject = Qt.createQmlObject(processString, root, "PreviewPrewarm_" + Sha256.sha256(directory).substr(0, 8));
-    previewScanProcesses[key] = processObject;
-
-    var handler = function (exitCode) {
-      if (exitCode === 0) {
-        var lines = processObject.stdout.text.split('\n');
-        for (var i = 0; i < lines.length; i++) {
-          var line = lines[i].trim();
-          if (line !== "") {
-            if (directory === steamWorkshopDirectory && shouldSkipSteamFile(line)) {
-              continue;
-            }
-            generateWallpaperPreview(line);
-          }
-        }
-      } else {
-        Logger.w("Wallpaper", "Preview scan failed for", directory, "exit:", exitCode);
-      }
-      delete previewScanProcesses[key];
-      processObject.destroy();
-    };
-
-    processObject.exited.connect(handler);
-    processObject.running = true;
-  }
-
   // -------------------------------------------------------------------
   // -------------------------------------------------------------------
   // -------------------------------------------------------------------
@@ -840,14 +945,13 @@ Singleton {
   // Instantiator (not Repeater) to create FolderListModel for each monitor
   Instantiator {
     id: wallpaperScanners
-    active: !Settings.data.wallpaper.recursiveSearch && !root.isSteamSourceActive()
     model: Quickshell.screens
     delegate: FolderListModel {
       property string screenName: modelData.name
       property string currentDirectory: root.getMonitorDirectory(screenName)
 
       folder: "file://" + currentDirectory
-      nameFilters: root.imageExtensions.concat(root.videoExtensions).map(ext => "*." + ext)
+      nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.pnm", "*.bmp", "*.webp", "*.mp4", "*.webm", "*.mov", "*.mkv"]
       showDirs: false
       sortField: FolderListModel.Name
 
@@ -866,6 +970,9 @@ Singleton {
       }
 
       onStatusChanged: {
+        if (root.isSteamSourceActive()) {
+          return;
+        }
         if (status === FolderListModel.Null) {
           // Flush the list
           root.wallpaperLists[screenName] = [];
@@ -890,57 +997,6 @@ Singleton {
           root.wallpaperListChanged(screenName, files.length);
         }
       }
-    }
-  }
-
-  // -------------------------------------------------------------------
-  // Cache file persistence
-  // -------------------------------------------------------------------
-  FileView {
-    id: wallpaperCacheView
-    printErrors: false
-    watchChanges: false
-
-    adapter: JsonAdapter {
-      id: wallpaperCacheAdapter
-      property var wallpapers: ({})
-      property string defaultWallpaper: root.noctaliaDefaultWallpaper
-    }
-
-    onLoaded: {
-      // Load wallpapers from cache file
-      root.currentWallpapers = wallpaperCacheAdapter.wallpapers || {};
-
-      // Load default wallpaper from cache if it exists, otherwise use Noctalia default
-      if (wallpaperCacheAdapter.defaultWallpaper && wallpaperCacheAdapter.defaultWallpaper !== "") {
-        root.defaultWallpaper = wallpaperCacheAdapter.defaultWallpaper;
-        Logger.d("Wallpaper", "Loaded default wallpaper from cache:", wallpaperCacheAdapter.defaultWallpaper);
-      } else {
-        root.defaultWallpaper = root.noctaliaDefaultWallpaper;
-        Logger.d("Wallpaper", "Using Noctalia default wallpaper");
-      }
-
-      Logger.d("Wallpaper", "Loaded wallpapers from cache file:", Object.keys(root.currentWallpapers).length, "screens");
-      root.isInitialized = true;
-    }
-
-    onLoadFailed: error => {
-      // File doesn't exist yet or failed to load - initialize with empty state
-      root.currentWallpapers = {};
-      Logger.d("Wallpaper", "Cache file doesn't exist or failed to load, starting with empty wallpapers");
-      root.isInitialized = true;
-    }
-  }
-
-  Timer {
-    id: saveTimer
-    interval: 500
-    repeat: false
-    onTriggered: {
-      wallpaperCacheAdapter.wallpapers = root.currentWallpapers;
-      wallpaperCacheAdapter.defaultWallpaper = root.defaultWallpaper;
-      wallpaperCacheView.writeAdapter();
-      Logger.d("Wallpaper", "Saved wallpapers to cache file");
     }
   }
 }

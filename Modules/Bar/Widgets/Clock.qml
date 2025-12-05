@@ -140,7 +140,7 @@ Rectangle {
                    }
 
                    if (action === "open-calendar") {
-                     PanelService.getPanel("clockPanel", screen)?.toggle(root);
+                     PanelService.getPanel("calendarPanel", screen)?.toggle(root);
                    } else if (action === "widget-settings") {
                      BarService.openWidgetSettings(screen, section, sectionWidgetIndex, widgetId, widgetSettings);
                    }
@@ -154,7 +154,7 @@ Rectangle {
     hoverEnabled: true
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     onEntered: {
-      if (!PanelService.getPanel("clockPanel", screen)?.active) {
+      if (!PanelService.getPanel("calendarPanel", screen)?.active) {
         TooltipService.show(root, I18n.tr("clock.tooltip"), BarService.getTooltipDirection());
       }
     }
@@ -171,7 +171,7 @@ Rectangle {
                      contextMenu.openAtItem(root, pos.x, pos.y);
                    }
                  } else {
-                   PanelService.getPanel("clockPanel", screen)?.toggle(this);
+                   PanelService.getPanel("calendarPanel", screen)?.toggle(this);
                  }
                }
   }

@@ -197,7 +197,7 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     width: isVerticalBar ? ((!hasFocusedWindow) && hideMode === "hidden" ? 0 : calculatedVerticalDimension()) : ((!hasFocusedWindow) && (hideMode === "hidden") ? 0 : dynamicWidth)
     height: isVerticalBar ? ((!hasFocusedWindow) && hideMode === "hidden" ? 0 : calculatedVerticalDimension()) : Style.capsuleHeight
-    radius: Style.radiusM
+    radius: isVerticalBar ? width / 2 : Style.radiusM
     color: Style.capsuleColor
 
     // Smooth width transition

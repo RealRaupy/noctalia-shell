@@ -241,14 +241,9 @@ Popup {
           // Rate limit hit - try to use cache if available
           downloadError = I18n.tr("settings.color-scheme.download.error.rate-limit");
           Logger.w("ColorSchemeDownload", downloadError);
-          if (typeof ShellState !== 'undefined' && ShellState.isLoaded) {
-            const cacheData = ShellState.getColorSchemesList();
-            const cachedSchemes = cacheData.schemes || [];
-            if (cachedSchemes.length > 0) {
-              availableSchemes = cachedSchemes;
-              hasInitialData = true;
-              Logger.i("ColorSchemeDownload", "Using cached schemes due to rate limit");
-            }
+          if (schemesCacheAdapter.schemes && schemesCacheAdapter.schemes.length > 0) {
+            availableSchemes = schemesCacheAdapter.schemes;
+            Logger.i("ColorSchemeDownload", "Using cached schemes due to rate limit");
           }
         } else {
           downloadError = I18n.tr("settings.color-scheme.download.error.api-error", {
@@ -745,12 +740,7 @@ Popup {
         enabled: !fetching && !downloading
         onClicked: {
           // Force refresh by clearing cache timestamp and fetching directly from API
-          if (typeof ShellState !== 'undefined' && ShellState.isLoaded) {
-            ShellState.setColorSchemesList({
-                                             schemes: [],
-                                             timestamp: 0
-                                           });
-          }
+          schemesCacheAdapter.timestamp = 0;
           // Fetch directly from API to avoid cache check delay
           fetchAvailableSchemesFromAPI();
         }

@@ -76,7 +76,7 @@ RowLayout {
       color: Color.mSurface
       border.color: combo.activeFocus ? Color.mSecondary : Color.mOutline
       border.width: Style.borderS
-      radius: Style.iRadiusM
+      radius: Style.radiusM
 
       Behavior on border.color {
         ColorAnimation {
@@ -115,31 +115,11 @@ RowLayout {
         verticalPolicy: ScrollBar.AsNeeded
 
         delegate: ItemDelegate {
-          property var parentComboBox: combo
-          property int itemIndex: index
-          width: ListView.view ? ListView.view.width : (parentComboBox ? parentComboBox.width - Style.marginM * 3 : 0)
+          property var parentComboBox: combo // Reference to the ComboBox
+          property int itemIndex: index // Explicitly capture index
+          width: parentComboBox ? parentComboBox.width : 0
           hoverEnabled: true
           highlighted: ListView.view.currentIndex === itemIndex
-
-          property bool pendingClick: false
-          Timer {
-            id: clickRetryTimer
-            interval: 50
-            repeat: false
-            onTriggered: {
-              if (parent.pendingClick && parent.ListView.view && !parent.ListView.view.flicking && !parent.ListView.view.moving) {
-                parent.pendingClick = false;
-                var item = root.getItem(parent.itemIndex);
-                if (item && item.key !== undefined && parent.parentComboBox) {
-                  root.selected(item.key);
-                  parent.parentComboBox.currentIndex = parent.itemIndex;
-                  parent.parentComboBox.popup.close();
-                }
-              } else if (parent.pendingClick) {
-                restart();
-              }
-            }
-          }
 
           onHoveredChanged: {
             if (hovered) {
@@ -148,24 +128,18 @@ RowLayout {
           }
 
           onClicked: {
-            if (ListView.view && (ListView.view.flicking || ListView.view.moving)) {
-              ListView.view.cancelFlick();
-              pendingClick = true;
-              clickRetryTimer.start();
-            } else {
-              var item = root.getItem(itemIndex);
-              if (item && item.key !== undefined && parentComboBox) {
-                root.selected(item.key);
-                parentComboBox.currentIndex = itemIndex;
-                parentComboBox.popup.close();
-              }
+            var item = root.getItem(itemIndex);
+            if (item && item.key !== undefined && parentComboBox) {
+              root.selected(item.key);
+              parentComboBox.currentIndex = itemIndex;
+              parentComboBox.popup.close();
             }
           }
 
           background: Rectangle {
-            anchors.fill: parent
+            width: parentComboBox ? parentComboBox.width - Style.marginM * 3 : 0
             color: highlighted ? Color.mHover : Color.transparent
-            radius: Style.iRadiusS
+            radius: Style.radiusS
             Behavior on color {
               ColorAnimation {
                 duration: Style.animationFast
@@ -195,10 +169,11 @@ RowLayout {
         color: Color.mSurfaceVariant
         border.color: Color.mOutline
         border.width: Style.borderS
-        radius: Style.iRadiusM
+        radius: Style.radiusM
       }
     }
 
+    // Update the currentIndex if the currentKey is changed externalyu
     Connections {
       target: root
       function onCurrentKeyChanged() {

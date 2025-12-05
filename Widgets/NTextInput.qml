@@ -50,7 +50,7 @@ ColumnLayout {
     background: Rectangle {
       id: frame
 
-      radius: Style.iRadiusM
+      radius: Style.radiusM
       color: Color.mSurface
       border.color: input.activeFocus ? Color.mSecondary : Color.mOutline
       border.width: Style.borderS

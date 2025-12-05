@@ -17,7 +17,6 @@ NIconButton {
   density: Settings.data.bar.density
   baseSize: Style.capsuleHeight
   applyUiScale: false
-  customRadius: Style.radiusL
   colorBg: PowerProfileService.noctaliaPerformanceMode ? Color.mPrimary : Style.capsuleColor
   colorFg: PowerProfileService.noctaliaPerformanceMode ? Color.mOnPrimary : Color.mOnSurface
   colorBorder: Color.transparent

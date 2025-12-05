@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
-set -e
+
+# Exit 0 if either the Wallpaper Engine workshop content folder (431960)
+# or the Wallpaper Engine install folder exists. Otherwise non-zero.
+
+set -euo pipefail
+set -x
+
+home="${HOME:-}"
 
 paths=(
-  "${XDG_DATA_HOME:-$HOME/.local/share}/Steam/steamapps/workshop/content/431960"
-  "$HOME/.steam/steam/steamapps/workshop/content/431960"
-  "$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/workshop/content/431960"
-  "${XDG_DATA_HOME:-$HOME/.local/share}/Steam/steamapps/common/wallpaper_engine"
-  "$HOME/.steam/steam/steamapps/common/wallpaper_engine"
-  "$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/wallpaper_engine"
+  "${home}/.local/share/Steam/steamapps/workshop/content/431960"
+  "${home}/.steam/steam/steamapps/common/wallpaper_engine"
+  "${home}/.local/share/Steam/steamapps/common/wallpaper_engine"
 )
 
-for dir in "${paths[@]}"; do
-  if [ -d "$dir" ]; then
+for p in "${paths[@]}"; do
+  if [ -d "$p" ]; then
     exit 0
   fi
 done
