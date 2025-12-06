@@ -12,13 +12,22 @@ ColumnLayout {
   id: root
 
   property string specificFolderMonitorName: ""
-  property int steamCheckExitCode: 1
-  property bool steamCheckDone: false
-  readonly property bool steamIntegrationAvailable: steamCheckDone && steamCheckExitCode === 0
+  
+  // Use a persistent singleton-like state for steam check
+  // This prevents rechecking every time the tab is opened
+  readonly property QtObject steamState: QtObject {
+    id: steamStateObj
+    property int exitCode: -1 // -1 = not checked yet, 0 = available, 1 = not available
+    property bool checkRunning: false
+  }
+  
+  readonly property bool steamIntegrationAvailable: steamState.exitCode === 0
 
   function enforceSteamAvailability() {
-    if (!steamIntegrationAvailable) {
+    // Only disable steam integration if check is done AND failed
+    if (steamState.exitCode === 1) { // Explicitly failed (not just unchecked)
       if (Settings.data.wallpaper.steamWallpaperIntegration) {
+        Logger.d("WallpaperTab", "Steam not available, disabling integration");
         Settings.data.wallpaper.steamWallpaperIntegration = false;
       }
       if (Settings.data.wallpaper.useSteamWallpapers) {
@@ -28,18 +37,21 @@ ColumnLayout {
   }
 
   Component.onCompleted: {
-    enforceSteamAvailability();
-    steamCheck.running = true;
+    // Only run check if not already done
+    if (steamState.exitCode === -1 && !steamState.checkRunning) {
+      steamState.checkRunning = true;
+      steamCheck.running = true;
+    }
   }
-  onSteamIntegrationAvailableChanged: enforceSteamAvailability()
 
   Process {
     id: steamCheck
     command: [Quickshell.shellDir + "/Bin/check-steam-wallpaper.sh"]
     running: false
     onExited: function (exitCode) {
-      steamCheckExitCode = exitCode;
-      steamCheckDone = true;
+      Logger.d("WallpaperTab", "Steam check completed with exit code:", exitCode);
+      steamState.exitCode = exitCode;
+      steamState.checkRunning = false;
       enforceSteamAvailability();
     }
     stdout: StdioCollector {}
@@ -408,7 +420,7 @@ ColumnLayout {
       visible: Settings.data.wallpaper.videoPlaybackEnabled
       enabled: steamIntegrationAvailable
       opacity: steamIntegrationAvailable ? 1.0 : 0.35
-      checked: steamIntegrationAvailable ? Settings.data.wallpaper.steamWallpaperIntegration : false
+      checked: Settings.data.wallpaper.steamWallpaperIntegration
       label: I18n.tr("settings.wallpaper.video.steam-integration.label")
       description: I18n.tr("settings.wallpaper.video.steam-integration.description")
       onToggled: checked => {

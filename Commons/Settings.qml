@@ -929,7 +929,7 @@ Singleton {
       }
 
       adapter.settingsVersion = 26;
-      saveSettings();
+      saveImmediate();
       Logger.i("Settings", "Migration to version 26 complete");
     }
 
