@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
+import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pam
@@ -76,36 +77,127 @@ Loader {
             property string currentLayout: KeyboardLayoutService.currentLayout
           }
 
-          Image {
-            id: lockBgImage
+          Item {
+            id: lockBgContainer
             anchors.fill: parent
-            fillMode: Image.PreserveAspectCrop
-            property string wallpaperPath: screen ? WallpaperService.getWallpaper(screen.name) : ""
-            property string wallpaperPreview: WallpaperService.getPreviewForDisplay(wallpaperPath)
-            source: wallpaperPreview
-            cache: true
-            smooth: true
-            mipmap: false
 
-            Connections {
-              target: WallpaperService
-              function onWallpaperPreviewReady(originalPath, previewPath) {
-                if (originalPath === wallpaperPath) {
-                  wallpaperPreview = WallpaperService.getPreviewForDisplay(wallpaperPath);
+            // Static image fallback (shown when animated wallpapers are disabled or for image wallpapers)
+            Image {
+              id: lockBgImage
+              anchors.fill: parent
+              fillMode: Image.PreserveAspectCrop
+              property string wallpaperPath: screen ? WallpaperService.getWallpaper(screen.name) : ""
+              property string wallpaperPreview: WallpaperService.getPreviewForDisplay(wallpaperPath)
+              property bool isVideoWallpaper: wallpaperPath && (wallpaperPath.toLowerCase().endsWith('.mp4') || 
+                                                                 wallpaperPath.toLowerCase().endsWith('.webm') || 
+                                                                 wallpaperPath.toLowerCase().endsWith('.mkv') ||
+                                                                 wallpaperPath.toLowerCase().endsWith('.avi') ||
+                                                                 wallpaperPath.toLowerCase().endsWith('.mov'))
+              visible: {
+                const mode = Settings.data.wallpaper.lockscreenVideoMode || "muted";
+                return !isVideoWallpaper || mode === "disabled";
+              }
+              source: wallpaperPreview
+              cache: true
+              smooth: true
+              mipmap: false
+
+              Connections {
+                target: WallpaperService
+                function onWallpaperPreviewReady(originalPath, previewPath) {
+                  if (originalPath === wallpaperPath) {
+                    wallpaperPreview = WallpaperService.getPreviewForDisplay(wallpaperPath);
+                  }
+                }
+              }
+
+              Connections {
+                target: WallpaperService
+                function onWallpaperChanged(screenName, path) {
+                  if (screen && screenName === screen.name) {
+                    wallpaperPath = path;
+                  }
+                }
+              }
+
+              onWallpaperPathChanged: wallpaperPreview = WallpaperService.getPreviewForDisplay(wallpaperPath)
+            }
+
+            // Animated video wallpaper (shown when enabled and wallpaper is a video)
+            Loader {
+              id: lockBgVideoLoader
+              anchors.fill: parent
+              active: {
+                const mode = Settings.data.wallpaper.lockscreenVideoMode || "muted";
+                return mode !== "disabled" && lockBgImage.isVideoWallpaper;
+              }
+              visible: active
+
+              sourceComponent: Item {
+                id: lockVideoContainer
+                anchors.fill: parent
+                property string wallpaperPath: lockBgImage.wallpaperPath
+                property string lockMode: Settings.data.wallpaper.lockscreenVideoMode || "muted"
+                property bool suspended: lockMode === "disabled"
+                property bool shouldMute: lockMode === "muted"
+
+                MediaPlayer {
+                  id: lockVideoPlayer
+                  source: lockVideoContainer.wallpaperPath
+                  loops: MediaPlayer.Infinite
+                  autoPlay: !lockVideoContainer.suspended
+                  videoOutput: lockVideoSurface
+                  audioOutput: AudioOutput {
+                    muted: lockVideoContainer.shouldMute || Settings.data.wallpaper.videoAudioMuted
+                    volume: lockVideoContainer.shouldMute ? 0.0 : Settings.data.wallpaper.videoAudioVolume
+                  }
+
+                  onPlaybackStateChanged: {
+                    if (playbackState === MediaPlayer.StoppedState && !lockVideoContainer.suspended) {
+                      play();
+                    }
+                  }
+                }
+
+                VideoOutput {
+                  id: lockVideoSurface
+                  anchors.fill: parent
+                  fillMode: {
+                    const mode = Settings.data.wallpaper.fillMode;
+                    if (mode === "stretch") return VideoOutput.Stretch;
+                    if (mode === "fit") return VideoOutput.PreserveAspectFit;
+                    return VideoOutput.PreserveAspectCrop;
+                  }
+                }
+
+                onWallpaperPathChanged: {
+                  if (wallpaperPath) {
+                    lockVideoPlayer.source = wallpaperPath;
+                    if (!suspended) {
+                      lockVideoPlayer.play();
+                    }
+                  }
+                }
+
+                onSuspendedChanged: {
+                  if (suspended) {
+                    lockVideoPlayer.pause();
+                  } else if (wallpaperPath) {
+                    lockVideoPlayer.play();
+                  }
+                }
+
+                Component.onCompleted: {
+                  if (wallpaperPath && !suspended) {
+                    lockVideoPlayer.play();
+                  }
+                }
+
+                Component.onDestruction: {
+                  lockVideoPlayer.stop();
                 }
               }
             }
-
-            Connections {
-              target: WallpaperService
-              function onWallpaperChanged(screenName, path) {
-                if (screen && screenName === screen.name) {
-                  wallpaperPath = path;
-                }
-              }
-            }
-
-            onWallpaperPathChanged: wallpaperPreview = WallpaperService.getPreviewForDisplay(wallpaperPath)
           }
 
           Rectangle {

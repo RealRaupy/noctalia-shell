@@ -29,7 +29,9 @@ Variants {
       property string pendingFallbackPath: ""
       property bool wallpaperSuspended: false
       property bool wallpaperMuteForWindows: false
+      property bool wallpaperMuteForLockScreen: false
       property bool isPrimaryScreen: false
+      property bool lockScreenActive: PanelService.lockScreen ? PanelService.lockScreen.active : false
 
       readonly property real edgeSmoothness: Settings.data.wallpaper.transitionEdgeSmoothness
       readonly property var allTransitions: WallpaperService.allTransitions
@@ -91,6 +93,9 @@ Variants {
         function onPauseVideoOnWindowsBlacklistChanged() {
           updateWallpaperSuspension();
         }
+        function onLockscreenVideoModeChanged() {
+          updateWallpaperSuspension();
+        }
         function onVideoAudioModeChanged() {
           updatePlaybackState();
         }
@@ -134,6 +139,14 @@ Variants {
           updateWallpaperSuspension();
         }
         function onWorkspaceChanged() {
+          updateWallpaperSuspension();
+        }
+      }
+
+      Connections {
+        target: PanelService.lockScreen
+        function onActiveChanged() {
+          lockScreenActive = PanelService.lockScreen && PanelService.lockScreen.active;
           updateWallpaperSuspension();
         }
       }
@@ -498,7 +511,7 @@ Variants {
           function updateVolume() {
             const baseVolume = Settings.data.wallpaper.videoAudioVolume;
             const hasFocus = WallpaperService.activeAudioPath === wallpaperPath;
-            const muted = WallpaperService.computeAudioMuted() || root.wallpaperMuteForWindows;
+            const muted = WallpaperService.computeAudioMuted() || root.wallpaperMuteForWindows || root.wallpaperMuteForLockScreen;
             const audioMode = Settings.data.wallpaper.videoAudioMode || "per_monitor";
 
             var desired = 0.0;
@@ -866,15 +879,30 @@ Variants {
 
       function updateWallpaperSuspension() {
         const actions = computeWindowActions();
-        const shouldSuspend = actions.pause;
-        const shouldMute = actions.mute;
+        let shouldSuspend = actions.pause;
+        let shouldMute = actions.mute;
+        let shouldMuteLockScreen = false;
 
-        if (wallpaperSuspended === shouldSuspend && wallpaperMuteForWindows === shouldMute) {
+        // Check lock screen state
+        if (lockScreenActive) {
+          const lockMode = Settings.data.wallpaper.lockscreenVideoMode || "muted";
+          if (lockMode === "disabled") {
+            shouldSuspend = true;
+          } else if (lockMode === "muted") {
+            shouldMuteLockScreen = true;
+          }
+          // If mode is "normal", don't change anything
+        }
+
+        if (wallpaperSuspended === shouldSuspend && 
+            wallpaperMuteForWindows === shouldMute &&
+            wallpaperMuteForLockScreen === shouldMuteLockScreen) {
           return;
         }
 
         wallpaperSuspended = shouldSuspend;
         wallpaperMuteForWindows = shouldMute;
+        wallpaperMuteForLockScreen = shouldMuteLockScreen;
         syncVideoSuspension();
         refreshWallpaperAudio();
       }

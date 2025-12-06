@@ -2038,6 +2038,19 @@
           "description": "Set the default volume for the wallpaper audio stream.",
           "label": "Wallpaper volume"
         },
+        "lockscreen": {
+          "section": {
+            "description": "Control how animated wallpapers behave on the lock screen.",
+            "label": "Lock screen wallpaper"
+          },
+          "mode": {
+            "description": "Choose how video wallpapers play on the lock screen.",
+            "label": "Lock screen video mode",
+            "normal": "Play with audio",
+            "muted": "Play without audio",
+            "disabled": "Don't play videos"
+          }
+        },
         "section": {
           "description": "Shared playback across monitors with one controllable audio stream.",
           "label": "Video wallpaper"

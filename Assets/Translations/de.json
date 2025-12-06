@@ -2031,6 +2031,19 @@
           "description": "Standardlautstärke des Hintergrundbild-Audiostreams festlegen.",
           "label": "Lautstärke des Hintergrundbilds"
         },
+        "lockscreen": {
+          "section": {
+            "description": "Steuern Sie, wie sich animierte Hintergrundbilder auf dem Sperrbildschirm verhalten.",
+            "label": "Sperrbildschirm-Hintergrundbild"
+          },
+          "mode": {
+            "description": "Wählen Sie, wie Video-Hintergrundbilder auf dem Sperrbildschirm abgespielt werden.",
+            "label": "Sperrbildschirm-Video-Modus",
+            "normal": "Mit Audio abspielen",
+            "muted": "Ohne Audio abspielen",
+            "disabled": "Videos nicht abspielen"
+          }
+        },
         "section": {
           "description": "Gemeinsame Wiedergabe über alle Monitore mit einem steuerbaren Audiostream.",
           "label": "Video-Hintergrundbild"

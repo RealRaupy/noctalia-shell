@@ -450,6 +450,33 @@ ColumnLayout {
         text: Math.round(Settings.data.wallpaper.videoAudioVolume * 100) + "%"
       }
     }
+
+    // Lock Screen Video Settings
+    NHeader {
+      label: I18n.tr("settings.wallpaper.video.lockscreen.section.label")
+      description: I18n.tr("settings.wallpaper.video.lockscreen.section.description")
+    }
+
+    NComboBox {
+      label: I18n.tr("settings.wallpaper.video.lockscreen.mode.label")
+      description: I18n.tr("settings.wallpaper.video.lockscreen.mode.description")
+      model: [
+        {
+          "key": "normal",
+          "name": I18n.tr("settings.wallpaper.video.lockscreen.mode.normal")
+        },
+        {
+          "key": "muted",
+          "name": I18n.tr("settings.wallpaper.video.lockscreen.mode.muted")
+        },
+        {
+          "key": "disabled",
+          "name": I18n.tr("settings.wallpaper.video.lockscreen.mode.disabled")
+        }
+      ]
+      currentKey: Settings.data.wallpaper.lockscreenVideoMode
+      onSelected: key => Settings.data.wallpaper.lockscreenVideoMode = key
+    }
   }
 
   NDivider {

@@ -22,7 +22,7 @@ Singleton {
   - Default cache directory: ~/.cache/noctalia
   */
   readonly property alias data: adapter  // Used to access via Settings.data.xxx.yyy
-  readonly property int settingsVersion: 25
+  readonly property int settingsVersion: 26
   readonly property bool isDebug: Quickshell.env("NOCTALIA_DEBUG") === "1"
   readonly property string shellName: "noctalia"
   readonly property string configDir: Quickshell.env("NOCTALIA_CONFIG_DIR") || (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/" + shellName + "/"
@@ -304,6 +304,7 @@ Singleton {
       property color fillColor: "#000000"
       property bool videoPlaybackEnabled: true
       // Audio routing: per monitor only (primary option removed)
+      property bool videoAudioEnabled: true
       property string videoAudioMode: "per_monitor"
       property bool videoAudioMuted: false
       property real videoAudioVolume: 0.35
@@ -311,6 +312,8 @@ Singleton {
       property bool muteInsteadOfPauseOnWindows: false
       property list<string> pauseVideoOnWindowsMuteWhitelist: []
       property list<string> pauseVideoOnWindowsBlacklist: []
+      // Lock screen video mode: "normal" (with audio), "muted" (silent), "disabled" (paused/static image)
+      property string lockscreenVideoMode: "muted"
       property bool steamWallpaperIntegration: false
       property bool useSteamWallpapers: false
       property bool randomEnabled: false
@@ -869,6 +872,65 @@ Singleton {
                        }
                      });
       }
+    }
+
+    // -----------------
+    // Version 26: Add missing video wallpaper settings and migrate lockscreen settings
+    if (adapter.settingsVersion < 26) {
+      Logger.i("Settings", "Migrating to version 26: Adding video wallpaper settings");
+      
+      // Ensure wallpaper section exists
+      if (!adapter.wallpaper) {
+        adapter.wallpaper = {};
+      }
+
+      // Add missing video playback settings if they don't exist
+      if (adapter.wallpaper.videoPlaybackEnabled === undefined) {
+        adapter.wallpaper.videoPlaybackEnabled = true;
+      }
+      if (adapter.wallpaper.videoAudioEnabled === undefined) {
+        adapter.wallpaper.videoAudioEnabled = true;
+      }
+      if (adapter.wallpaper.videoAudioMode === undefined) {
+        adapter.wallpaper.videoAudioMode = "per_monitor";
+      }
+      if (adapter.wallpaper.pauseVideoOnWindows === undefined) {
+        adapter.wallpaper.pauseVideoOnWindows = false;
+      }
+      if (adapter.wallpaper.muteInsteadOfPauseOnWindows === undefined) {
+        adapter.wallpaper.muteInsteadOfPauseOnWindows = false;
+      }
+      if (adapter.wallpaper.pauseVideoOnWindowsMuteWhitelist === undefined) {
+        adapter.wallpaper.pauseVideoOnWindowsMuteWhitelist = [];
+      }
+      if (adapter.wallpaper.pauseVideoOnWindowsBlacklist === undefined) {
+        adapter.wallpaper.pauseVideoOnWindowsBlacklist = [];
+      }
+
+      // Migrate old lockscreen settings to new mode system
+      if (adapter.wallpaper.lockscreenVideoMode === undefined) {
+        // Check old settings
+        const oldShowAnimated = adapter.wallpaper.showAnimatedWallpaperOnLockScreen;
+        const oldPause = adapter.wallpaper.pauseVideoOnLockScreen;
+        const oldMute = adapter.wallpaper.muteVideoOnLockScreen;
+
+        if (oldShowAnimated === false || oldPause === true) {
+          adapter.wallpaper.lockscreenVideoMode = "disabled";
+        } else if (oldMute === false) {
+          adapter.wallpaper.lockscreenVideoMode = "normal";
+        } else {
+          adapter.wallpaper.lockscreenVideoMode = "muted"; // Default
+        }
+
+        // Remove old settings
+        delete adapter.wallpaper.showAnimatedWallpaperOnLockScreen;
+        delete adapter.wallpaper.pauseVideoOnLockScreen;
+        delete adapter.wallpaper.muteVideoOnLockScreen;
+      }
+
+      adapter.settingsVersion = 26;
+      saveSettings();
+      Logger.i("Settings", "Migration to version 26 complete");
     }
 
     // -----------------
